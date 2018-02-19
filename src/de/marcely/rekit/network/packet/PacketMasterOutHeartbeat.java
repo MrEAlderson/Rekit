@@ -1,7 +1,5 @@
 package de.marcely.rekit.network.packet;
 
-import de.marcely.rekit.network.PacketType;
-
 public class PacketMasterOutHeartbeat extends Packet {
 
 	public PacketMasterOutHeartbeat(){

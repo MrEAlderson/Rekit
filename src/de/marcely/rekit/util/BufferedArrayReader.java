@@ -1,6 +1,5 @@
 package de.marcely.rekit.util;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;

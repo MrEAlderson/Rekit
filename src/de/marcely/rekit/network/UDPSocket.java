@@ -6,31 +6,24 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
-import de.marcely.rekit.logger.Logger;
-import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
 
 public class UDPSocket {
 	
-	private final Logger logger;
 	public final int port;
 	
-	public final List<PacketReceiver> receivers = new ArrayList<PacketReceiver>();
 	@Getter private boolean running = false;
 	
 	private DatagramSocket socket;
 	
 	public UDPSocket(int port){
-		this.logger = new Logger("Protocol");
 		this.port = port;
 	}
 	
-	public boolean run(){
+	public boolean run(SocketPump pump){
 		if(running) return false;
 		running = true;
 		
@@ -46,17 +39,7 @@ public class UDPSocket {
 						try{
 							socket.receive(dp);
 							
-							final byte[] data = Arrays.copyOfRange(buffer, Packet.MAGIC.length, dp.getLength());
-							final PacketType type = PacketType.byData(data);
-							
-							if(type != null){
-								final Packet packet = type.clazz.newInstance();
-								packet.readRawData(Arrays.copyOfRange(data, 8, data.length));
-								
-								for(PacketReceiver receiver:receivers)
-									receiver.onReceive(dp.getAddress(), dp.getPort(), packet);
-							}else
-								logger.debug("Received unkown packet (" + Util.bytesToHex(Arrays.copyOfRange(data, 0, 4)) + ", " + dp.getAddress().getHostAddress() + ") [" + new String(data) + "]");
+							pump.receive(dp.getAddress(), dp.getPort(), Arrays.copyOf(buffer, dp.getLength()));
 						}catch(Exception e){
 							e.printStackTrace();
 						}
@@ -86,7 +69,7 @@ public class UDPSocket {
 	
 	public boolean sendRawPacket(InetAddress address, int port, byte[] data){
 		final DatagramPacket sendPacket = new DatagramPacket(data, data.length, address, port);
-		
+		System.out.println(Util.bytesToHex(data));
 		try{
 			socket.send(sendPacket);
 		}catch(IOException e){

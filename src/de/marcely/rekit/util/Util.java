@@ -2,10 +2,10 @@ package de.marcely.rekit.util;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import com.sun.istack.internal.Nullable;
-
-import de.marcely.rekit.network.packet.Packet;
 
 public class Util {
 	
@@ -19,18 +19,6 @@ public class Util {
 		return null;
 	}
 	
-	public static byte[] buildPacket(byte[] data){
-		final byte[] ndata = new byte[Packet.MAGIC.length + data.length];
-		
-		for(int i=0; i<Packet.MAGIC.length; i++)
-			ndata[i] = Packet.MAGIC[i];
-		
-		for(int i=0; i<data.length; i++)
-			ndata[Packet.MAGIC.length + i] = data[i];
-		
-		return ndata;
-	}
-	
     public static byte[] concat(byte[] a1, byte[] a2){
     	final byte[] c = new byte[a1.length+a2.length];
     	
@@ -41,7 +29,7 @@ public class Util {
     }
     
     private final static char[] HEXMAP = "0123456789ABCDEF".toCharArray();
-    public static String bytesToHex(byte[] bytes){
+    public static String bytesToHex(byte... bytes){
         String str = "";
         
         for(int j=0; j<bytes.length; j++){
@@ -63,5 +51,18 @@ public class Util {
         c[1] = HEXMAP[v & 0x0F];
         
         return new String(c);
+    }
+    
+    public static byte[] encodeMD5(byte[] input){
+		try{
+			final MessageDigest md = MessageDigest.getInstance("MD5");
+			
+	    	md.update(input);
+	    	return md.digest();
+		}catch(NoSuchAlgorithmException e){
+			e.printStackTrace();
+		}
+		
+		return null;
     }
 }

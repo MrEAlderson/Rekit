@@ -1,8 +1,12 @@
 package de.marcely.rekit.logger;
 
+import lombok.Getter;
+import lombok.Setter;
+
 public class Logger {
 	
-	public final String identifier;
+	@Getter private final String identifier;
+	@Getter @Setter private boolean debugEnabled = true;
 	
 	public Logger(String identifier){
 		this.identifier = identifier;
@@ -25,7 +29,8 @@ public class Logger {
 	}
 	
 	public void debug(String msg){
-		print("DEBUG", msg);
+		if(debugEnabled)
+			print("DEBUG", msg);
 	}
 	
 	private void print(String type, String msg){

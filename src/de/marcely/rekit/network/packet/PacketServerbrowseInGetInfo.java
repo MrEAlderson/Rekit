@@ -2,7 +2,6 @@ package de.marcely.rekit.network.packet;
 
 import java.util.Map.Entry;
 
-import de.marcely.rekit.network.PacketType;
 import de.marcely.rekit.util.IntCompressor;
 
 public class PacketServerbrowseInGetInfo extends SilentPacket {

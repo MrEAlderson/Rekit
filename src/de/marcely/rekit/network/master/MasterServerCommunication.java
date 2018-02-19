@@ -6,11 +6,12 @@ import java.util.TimerTask;
 
 import de.marcely.rekit.logger.Logger;
 import de.marcely.rekit.network.PacketReceiver;
-import de.marcely.rekit.network.PacketType;
 import de.marcely.rekit.network.Server;
+import de.marcely.rekit.network.TransferType;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketMasterOutHandshake;
 import de.marcely.rekit.network.packet.PacketMasterOutHeartbeat;
+import de.marcely.rekit.network.packet.PacketType;
 
 public class MasterServerCommunication {
 	
@@ -43,6 +44,8 @@ public class MasterServerCommunication {
 					if(selectedServer == null){
 						selectedServer = MasterServer.byAddress(address);
 						
+						if(selectedServer == null) return;
+						
 						logger.info("Chose '" + selectedServer.address.getHostName() + "' as master, sending heartbeats");
 						
 						heartbeatTimer = new Timer();
@@ -72,7 +75,7 @@ public class MasterServerCommunication {
 		return true;
 	}
 	
-	public void sendPacket(MasterServer server, Packet packet){
-		this.server.sendPacket(server.address, PORT, packet);
+	private void sendPacket(MasterServer server, Packet packet){
+		this.server.sendPacket(server.address, PORT, packet, TransferType.SIMPLE);
 	}
 }

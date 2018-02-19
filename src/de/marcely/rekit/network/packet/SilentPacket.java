@@ -1,7 +1,5 @@
 package de.marcely.rekit.network.packet;
 
-import de.marcely.rekit.network.PacketType;
-
 public class SilentPacket extends Packet {
 
 	public SilentPacket(PacketType type){

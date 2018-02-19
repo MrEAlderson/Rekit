@@ -23,6 +23,13 @@ public class BufferedPacketWriter extends ByteArrayOutputStream {
 		write(str.getBytes());
 	}
 	
+	public void writeString(String str, int limit){
+		if(str.length() > limit)
+			str = str.substring(0, limit);
+		
+		write(str.getBytes());
+	}
+	
 	public void writePackedInt(int i){
 		write(IntCompressor.pack(i));
 	}
@@ -41,13 +48,14 @@ public class BufferedPacketWriter extends ByteArrayOutputStream {
 	}
 	
 	public void writeToken(int token){
-		final String[] parts = Integer.toString(token).split("");
+		/*final String[] parts = Integer.toString(token).split("");
 		final byte[] result = new byte[parts.length];
 		
 		for(int i=0; i<parts.length; i++)
 			result[i] = (byte) (Byte.parseByte(parts[i]) + 0x30);
 		
-		write(result);
+		write(result);*/
+		writeString(Integer.toString(token < 0 ? -token+63 : token), 6);
 	}
 	
 	@Override

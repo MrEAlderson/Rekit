@@ -2,11 +2,12 @@ package de.marcely.rekit.network;
 
 import java.net.InetAddress;
 
+import de.marcely.rekit.network.master.MasterServer;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketServerbrowseInGetInfo;
 import de.marcely.rekit.network.packet.PacketServerbrowseOutInfo;
 import de.marcely.rekit.network.packet.PacketServerbrowseOutResponse;
-import de.marcely.rekit.util.Util;
+import de.marcely.rekit.network.packet.PacketType;
 
 public class ServerHandler {
 	
@@ -28,7 +29,7 @@ public class ServerHandler {
 		receiver = new PacketReceiver(){
 			public void onReceive(InetAddress address, int port, Packet rawPacket){
 				if(rawPacket.type == PacketType.SERVERBROWSE_IN_CHECK)
-					server.sendPacket(address, port, new PacketServerbrowseOutResponse());
+					server.sendPacket(address, port, new PacketServerbrowseOutResponse(), TransferType.SIMPLE);
 				
 				else if(rawPacket.type == PacketType.SERVERBROWSE_IN_GETINFO){
 					final PacketServerbrowseInGetInfo packet = (PacketServerbrowseInGetInfo) rawPacket;
@@ -38,13 +39,13 @@ public class ServerHandler {
 					np.token = packet.token;
 					np.serverInfo = server.info;
 					
-					System.out.println(Util.bytesToHex(np.getRawData()));
-					
-					server.sendPacket(address, port, np);
+					server.sendPacket(address, port, np, TransferType.SIMPLE);
 				
 				}else if(rawPacket.type == PacketType.SERVERBROWSE_IN_ERROR){
-					server.logger.warn("The master server reports that clients can not connect to this server");
-					server.logger.warn("Configure your Firewall/NAT to let through UDP on port " + server.getPort());
+					if(MasterServer.byAddress(address) != null){
+						server.logger.warn("The master server reports that clients can not connect to this server");
+						server.logger.warn("Configure your Firewall/NAT to let through UDP on port " + server.getPort());
+					}
 				}
 			}
 		};
