@@ -69,7 +69,9 @@ public class UDPSocket {
 	
 	public boolean sendRawPacket(InetAddress address, int port, byte[] data){
 		final DatagramPacket sendPacket = new DatagramPacket(data, data.length, address, port);
-		System.out.println(Util.bytesToHex(data));
+		
+		System.out.println("SEND:" + Util.bytesToHex(data));
+		
 		try{
 			socket.send(sendPacket);
 		}catch(IOException e){

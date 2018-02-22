@@ -12,8 +12,8 @@ public abstract class Packet {
 	
 	public final PacketType type;
 	
-	public PacketFlag _flag = PacketFlag.NONE;
-	public boolean _ack;
+	protected PacketFlag[] _flags;
+	protected short _ack;
 	
 	public Packet(PacketType type){
 		this.type = type;
@@ -31,6 +31,8 @@ public abstract class Packet {
 		
 		try{
 			final Packet packet = type.clazz.newInstance();
+			packet._flags = chunks[0].getFlags();
+			packet._ack = chunks[0].getAckID();
 			packet.readRawData(data);
 			
 			return packet;

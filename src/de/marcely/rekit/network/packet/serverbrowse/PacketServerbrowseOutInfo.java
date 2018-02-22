@@ -1,7 +1,9 @@
-package de.marcely.rekit.network.packet;
+package de.marcely.rekit.network.packet.serverbrowse;
 
 import de.marcely.rekit.network.BufferedPacketWriter;
-import de.marcely.rekit.network.ServerInfo;
+import de.marcely.rekit.network.packet.Packet;
+import de.marcely.rekit.network.packet.PacketType;
+import de.marcely.rekit.network.server.ServerInfo;
 
 public class PacketServerbrowseOutInfo extends Packet {
 	

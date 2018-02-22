@@ -1,13 +1,14 @@
-package de.marcely.rekit.network;
+package de.marcely.rekit.network.server;
 
 import java.net.InetAddress;
 
 import de.marcely.rekit.network.master.MasterServer;
 import de.marcely.rekit.network.packet.Packet;
-import de.marcely.rekit.network.packet.PacketServerbrowseInGetInfo;
-import de.marcely.rekit.network.packet.PacketServerbrowseOutInfo;
-import de.marcely.rekit.network.packet.PacketServerbrowseOutResponse;
 import de.marcely.rekit.network.packet.PacketType;
+import de.marcely.rekit.network.packet.serverbrowse.PacketServerbrowseInGetInfo;
+import de.marcely.rekit.network.packet.serverbrowse.PacketServerbrowseOutInfo;
+import de.marcely.rekit.network.packet.serverbrowse.PacketServerbrowseOutResponse;
+import de.marcely.rekit.network.server.PacketReceiver.AbstractPacketReceiver;
 
 public class ServerHandler {
 	
@@ -26,10 +27,11 @@ public class ServerHandler {
 	public boolean run(){
 		if(isRunning()) return false;
 		
-		receiver = new PacketReceiver(){
+		receiver = new AbstractPacketReceiver(){
+			@Override
 			public void onReceive(InetAddress address, int port, Packet rawPacket){
 				if(rawPacket.type == PacketType.SERVERBROWSE_IN_CHECK)
-					server.sendPacket(address, port, new PacketServerbrowseOutResponse(), TransferType.SIMPLE);
+					server.sendPacket(address, port, new PacketServerbrowseOutResponse());
 				
 				else if(rawPacket.type == PacketType.SERVERBROWSE_IN_GETINFO){
 					final PacketServerbrowseInGetInfo packet = (PacketServerbrowseInGetInfo) rawPacket;
@@ -39,7 +41,7 @@ public class ServerHandler {
 					np.token = packet.token;
 					np.serverInfo = server.info;
 					
-					server.sendPacket(address, port, np, TransferType.SIMPLE);
+					server.sendPacket(address, port, np);
 				
 				}else if(rawPacket.type == PacketType.SERVERBROWSE_IN_ERROR){
 					if(MasterServer.byAddress(address) != null){

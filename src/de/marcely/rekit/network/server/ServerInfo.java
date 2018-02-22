@@ -1,4 +1,4 @@
-package de.marcely.rekit.network;
+package de.marcely.rekit.network.server;
 
 import java.util.List;
 

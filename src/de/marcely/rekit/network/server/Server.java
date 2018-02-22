@@ -1,4 +1,4 @@
-package de.marcely.rekit.network;
+package de.marcely.rekit.network.server;
 
 import java.net.InetAddress;
 import java.util.HashMap;
@@ -17,7 +17,7 @@ public class Server {
 	public final MasterServerCommunication masterserver;
 	public final ServerHandler handler;
 	public final ServerInfo info;
-	public final java.util.Map<Integer, Client> clients = new HashMap<>();
+	public final java.util.Map<Short, Client> clients = new HashMap<>();
 	public final java.util.Map<String, Client> clients2 = new HashMap<>();
 	
 	@Getter private boolean running = false;
@@ -58,7 +58,7 @@ public class Server {
 		return true;
 	}
 	
-	public void sendPacket(InetAddress address, int port, Packet packet, TransferType type){
-		protocol.sendPacket(address, port, packet, type);
+	public void sendPacket(InetAddress address, int port, Packet packet){
+		protocol.sendPacket(address, port, packet);
 	}
 }

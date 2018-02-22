@@ -5,13 +5,13 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import de.marcely.rekit.logger.Logger;
-import de.marcely.rekit.network.PacketReceiver;
-import de.marcely.rekit.network.Server;
-import de.marcely.rekit.network.TransferType;
 import de.marcely.rekit.network.packet.Packet;
-import de.marcely.rekit.network.packet.PacketMasterOutHandshake;
-import de.marcely.rekit.network.packet.PacketMasterOutHeartbeat;
 import de.marcely.rekit.network.packet.PacketType;
+import de.marcely.rekit.network.packet.master.PacketMasterOutHandshake;
+import de.marcely.rekit.network.packet.master.PacketMasterOutHeartbeat;
+import de.marcely.rekit.network.server.PacketReceiver;
+import de.marcely.rekit.network.server.Server;
+import de.marcely.rekit.network.server.PacketReceiver.AbstractPacketReceiver;
 
 public class MasterServerCommunication {
 	
@@ -38,7 +38,8 @@ public class MasterServerCommunication {
 		
 		selectedServer = null;
 		
-		receiver = new PacketReceiver(){
+		receiver = new AbstractPacketReceiver(){
+			@Override
 			public void onReceive(InetAddress address, int port, Packet packet){
 				if(packet.type == PacketType.MASTER_IN_HANDSHAKE){
 					if(selectedServer == null){
@@ -76,6 +77,6 @@ public class MasterServerCommunication {
 	}
 	
 	private void sendPacket(MasterServer server, Packet packet){
-		this.server.sendPacket(server.address, PORT, packet, TransferType.SIMPLE);
+		this.server.sendPacket(server.address, PORT, packet);
 	}
 }

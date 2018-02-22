@@ -1,9 +1,10 @@
-package de.marcely.rekit.network;
+package de.marcely.rekit.network.server;
 
 import java.net.InetSocketAddress;
 
 import de.marcely.rekit.KickReason;
 import de.marcely.rekit.network.packet.Packet;
+import de.marcely.rekit.network.packet.PacketType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,12 +14,12 @@ public class Client {
 	
 	@Getter private final Server server;
 	@Getter private final InetSocketAddress address;
-	@Getter private final int id;
+	@Getter private final short id;
 	
 	@Setter private ClientState state = ClientState.DISCONNECTED;
 	@Getter @Setter private long lastReceivedPacket = System.currentTimeMillis();
 	
-	public Client(Server server, InetSocketAddress address, int id){
+	public Client(Server server, InetSocketAddress address, short id){
 		this.server = server;
 		this.address = address;
 		this.id = id;
@@ -39,8 +40,8 @@ public class Client {
 		return this.state;
 	}
 	
-	public void sendPacket(Packet packet, TransferType type){
-		this.server.sendPacket(address.getAddress(), address.getPort(), packet, type);
+	public void sendPacket(Packet packet){
+		this.server.sendPacket(address.getAddress(), address.getPort(), packet);
 	}
 	
 	public boolean kick(KickReason reason){
@@ -50,7 +51,7 @@ public class Client {
 		this.server.clients.remove(this.id);
 		this.server.clients2.remove(getIdentifier());
 		
-		// TODO Send kick packet
+		this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_CLOSE, reason.getMessage());
 		
 		return true;
 	}

@@ -12,7 +12,7 @@ public class KickReason {
 	}
 	
 	public KickReason(KickReasonType type){
-		this(type, "");
+		this(type, type.getMessage());
 	}
 	
 	public KickReason(KickReasonType type, String msg){
@@ -25,10 +25,15 @@ public class KickReason {
 	
 	
 	public static enum KickReasonType {
-		TIMEOUT,
-		KICK_VOTING,
-		KICK_ADMIN,
-		ERROR,
-		CUSTOM;
+		KICK("You have been kicked of the server."),
+		BANNED("You are not permitted to join the server for %1 minutes."),
+		ERROR("An error occured."),
+		CUSTOM("No reason specified.");
+		
+		@Getter private final String message;
+		
+		private KickReasonType(String msg){
+			this.message = msg;
+		}
 	}
 }

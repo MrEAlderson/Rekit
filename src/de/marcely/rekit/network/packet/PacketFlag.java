@@ -6,7 +6,6 @@ import lombok.Getter;
 
 public enum PacketFlag {
 	
-	NONE((byte) 0x0),
 	CONTROL((byte) 0x1),
 	CONNLESS((byte) 0x2),
 	RESEND((byte) 0x4),
