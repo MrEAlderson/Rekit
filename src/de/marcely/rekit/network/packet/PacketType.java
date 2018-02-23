@@ -20,7 +20,7 @@ public enum PacketType {
 	
 	public static final byte CONTROL_KEEPALIVE = 0x0;
 	public static final byte CONTROL_CONNECT = 0x1;
-	public static final byte CONTROLL_CONNECT_ACCEPT = 0x2;
+	public static final byte CONTROL_CONNECT_ACCEPT = 0x2;
 	public static final byte CONTROL_ACCEPT = 0x3;
 	public static final byte CONTROL_CLOSE = 0x4;
 	

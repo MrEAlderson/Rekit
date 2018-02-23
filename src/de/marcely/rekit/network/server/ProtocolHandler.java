@@ -17,6 +17,7 @@ import com.sun.istack.internal.Nullable;
 
 import de.marcely.rekit.KickReason;
 import de.marcely.rekit.Main;
+import de.marcely.rekit.KickReason.KickReasonType;
 import de.marcely.rekit.network.BufferedPacketWriter;
 import de.marcely.rekit.network.ChunkBuffer;
 import de.marcely.rekit.network.QueuedPacket;
@@ -42,8 +43,8 @@ public class ProtocolHandler {
 	private Queue<QueuedPacket> receiveQueue = new ConcurrentLinkedQueue<QueuedPacket>(), sendQueue = new ConcurrentLinkedQueue<QueuedPacket>();
 	private Map<Byte, QueuedPacket> sendQueuedAcks = new HashMap<>();
 	private Map<String, ChunkBuffer> bufferedChunks = new HashMap<>();
-	private java.util.Map<Short, Client> clients = new HashMap<>();
-	private java.util.Map<String, Client> clients2 = new HashMap<>();
+	public java.util.Map<Short, Client> clients = new HashMap<>();
+	public java.util.Map<String, Client> clients2 = new HashMap<>();
 	
 	private Timer scheduler;
 	private long lastAck;
@@ -97,8 +98,6 @@ public class ProtocolHandler {
 	}
 	
 	private void handleQueuedPacket(QueuedPacket rawPacket){
-		System.out.println("received:" + Util.bytesToHex(rawPacket.getBuffer()));
-		
 		final PacketChunk chunk = PacketChunk.ofData(rawPacket.getAddress(), rawPacket.getPort(), rawPacket.getBuffer());
 		
 		if(chunk == null) return; // corrupted packet
@@ -154,15 +153,23 @@ public class ProtocolHandler {
 	}
 	
 	private void handleControlPacket(InetAddress address, int port, byte[] data){
+		Client client = clients2.get(Util.getIdentifier(address, port));
+		
 		switch(data[0]){
 		case PacketType.CONTROL_CONNECT:
+			if(client != null) return;
+			
 			final KickReason result = runCanJoinEvent(address, port);
+			System.out.println("Connected");
 			
 			if(result == null){
-				final Client client = new Client(Main.SERVER, new InetSocketAddress(address, port), getNextBestClientID());
+				client = new Client(Main.SERVER, new InetSocketAddress(address, port), getNextBestClientID());
+				client.setState(ClientState.PENDING);
 				
 				this.clients.put(client.getId(), client);
 				this.clients2.put(client.getIdentifier(), client);
+				
+				client.ping();
 				
 				for(PacketReceiver receiver:receivers)
 					receiver.onConnect(client);
@@ -170,6 +177,11 @@ public class ProtocolHandler {
 				sendPacketControl(address, port, PacketType.CONTROL_CLOSE, result.getMessage());
 			
 			break;
+			
+		case PacketType.CONTROL_CLOSE:
+			if(client == null) return;
+			
+			client.close();
 		}
 	}
 	
@@ -189,10 +201,21 @@ public class ProtocolHandler {
 				sendQueuedAcks.put(packet.getAckID(), packet);
 		}
 		
-		// resend ack packets
 		if(System.currentTimeMillis() > lastAck+RESEND_ACK){
+			// resend ack packets
 			for(QueuedPacket packet1:sendQueuedAcks.values())
 				socket.sendRawPacket(packet1.getAddress(), packet1.getPort(), packet1.getBuffer());
+			
+			for(Client c:clients.values()){
+				// check if a player timed out
+				if(System.currentTimeMillis() > c.getLastReceivedPacket()+Client.TIMEOUT){
+					c.kick(new KickReason(KickReasonType.TIMEOUT));
+					continue;
+				}
+				
+				// ping
+				c.ping();
+			}
 			
 			lastAck = System.currentTimeMillis();
 		}
@@ -268,6 +291,10 @@ public class ProtocolHandler {
 		
 		sendPacketChunk(new PacketChunk(address, port, new PacketFlag[]{ PacketFlag.CONTROL }, (byte) 0x00, (byte) 1,
 				Util.concat(new byte[]{ id }, extra.getBytes(StandardCharsets.UTF_8))));
+	}
+	
+	public boolean isConnected(InetAddress address, int port){
+		return clients2.containsKey(Util.getIdentifier(address, port));
 	}
 	
 	private @Nullable KickReason runCanJoinEvent(InetAddress address, int port){

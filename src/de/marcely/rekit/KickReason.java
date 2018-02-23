@@ -25,9 +25,11 @@ public class KickReason {
 	
 	
 	public static enum KickReasonType {
+		TIMEOUT("Timeout (Network lag?)"),
 		KICK("You have been kicked of the server."),
 		BANNED("You are not permitted to join the server for %1 minutes."),
 		ERROR("An error occured."),
+		SERVER_CLOSE("Server closed."),
 		CUSTOM("No reason specified.");
 		
 		@Getter private final String message;

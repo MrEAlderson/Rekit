@@ -65,4 +65,8 @@ public class Util {
 		
 		return null;
     }
+    
+    public static String getIdentifier(InetAddress address, int port){
+    	return address.getHostAddress() + ":" + port;
+    }
 }

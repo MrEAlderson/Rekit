@@ -13,7 +13,7 @@ public interface PacketReceiver {
 	
 	public void onConnect(Client client);
 	
-	public void onDisconnect(Client client, String reason);
+	public void onDisconnect(Client client);
 	
 	public @Nullable KickReason canJoin(InetAddress address, int port);
 	
@@ -27,7 +27,7 @@ public interface PacketReceiver {
 		public void onConnect(Client client){ }
 
 		@Override
-		public void onDisconnect(Client client, String reason){ }
+		public void onDisconnect(Client client){ }
 		
 		@Override
 		public @Nullable KickReason canJoin(InetAddress address, int port){ return null; }

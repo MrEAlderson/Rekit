@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import de.marcely.rekit.KickReason;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketType;
+import de.marcely.rekit.util.Util;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,11 +27,11 @@ public class Client {
 	}
 	
 	public String getIdentifier(){
-		return this.address.getHostString() + ":" + this.address.getPort();
+		return Util.getIdentifier(address.getAddress(), address.getPort());
 	}
 	
 	public boolean isConnected(){
-		return server.clients.containsValue(this);
+		return server.protocol.isConnected(address.getAddress(), address.getPort());
 	}
 	
 	public ClientState getState(){
@@ -45,14 +46,35 @@ public class Client {
 	}
 	
 	public boolean kick(KickReason reason){
-		if(!isConnected())
+		if(!close())
 			return false;
-		
-		this.server.clients.remove(this.id);
-		this.server.clients2.remove(getIdentifier());
 		
 		this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_CLOSE, reason.getMessage());
 		
 		return true;
+	}
+	
+	public boolean close(){
+		if(!isConnected())
+			return false;
+		
+		setState(ClientState.DISCONNECTED);
+		
+		this.server.protocol.clients.remove(this.id);
+		this.server.protocol.clients2.remove(getIdentifier());
+		
+		for(PacketReceiver receiver:this.server.protocol.receivers)
+			receiver.onDisconnect(this);
+		
+		System.out.println("Disconnected");
+		
+		return true;
+	}
+	
+	public void ping(){
+		if(state == ClientState.CONNECTED)
+			this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_KEEPALIVE, null);
+		else if(state == ClientState.PENDING)
+			this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_CONNECT_ACCEPT, null);
 	}
 }

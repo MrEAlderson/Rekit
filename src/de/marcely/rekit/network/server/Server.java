@@ -1,7 +1,6 @@
 package de.marcely.rekit.network.server;
 
 import java.net.InetAddress;
-import java.util.HashMap;
 import java.util.List;
 
 import de.marcely.rekit.logger.Logger;
@@ -17,8 +16,6 @@ public class Server {
 	public final MasterServerCommunication masterserver;
 	public final ServerHandler handler;
 	public final ServerInfo info;
-	public final java.util.Map<Short, Client> clients = new HashMap<>();
-	public final java.util.Map<String, Client> clients2 = new HashMap<>();
 	
 	@Getter private boolean running = false;
 	
