@@ -19,6 +19,7 @@ public class Client {
 	
 	@Setter private ClientState state = ClientState.DISCONNECTED;
 	@Getter @Setter private long lastReceivedPacket = System.currentTimeMillis();
+	@Getter private final long loginDate = System.currentTimeMillis();
 	
 	public Client(Server server, InetSocketAddress address, short id){
 		this.server = server;
@@ -62,6 +63,7 @@ public class Client {
 		
 		this.server.protocol.clients.remove(this.id);
 		this.server.protocol.clients2.remove(getIdentifier());
+		this.server.protocol.bufferedChunks.remove(getIdentifier());
 		
 		for(PacketReceiver receiver:this.server.protocol.receivers)
 			receiver.onDisconnect(this);

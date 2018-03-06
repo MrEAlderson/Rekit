@@ -35,27 +35,4 @@ public class PacketServerbrowseOutInfo extends Packet {
 
 	@Override
 	public void readRawData(byte[] data){ }
-	
-	// TODO: Improve it
-	/*private byte[] getKey(String hex){
-		if(hex.equals("00"))
-			return new byte[]{ 0x30 };
-		
-		final List<Byte> bytes = new ArrayList<Byte>();
-		
-		for(int ci=0; ci<hex.length(); ci++){
-			final char c = hex.charAt(ci);
-			
-			if(c == '0') continue;
-			
-			if(c >= '0' && c <= '9')
-				bytes.add((byte) (0x30+c));
-			else if(c == 'a'){
-				bytes.add((byte) 0x31);
-				bytes.add((byte) 0x36);
-			}else if(c == 'b'){
-				bytes.add((byte) 0x31);
-			}
-		}
-	}*/
 }

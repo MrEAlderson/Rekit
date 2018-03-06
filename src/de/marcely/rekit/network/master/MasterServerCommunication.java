@@ -15,6 +15,8 @@ import de.marcely.rekit.network.server.PacketReceiver.AbstractPacketReceiver;
 
 public class MasterServerCommunication {
 	
+	private static final long ANTISPAM_DELAY = 20000;
+	
 	public static final int PORT = 8300;
 	public MasterServer selectedServer;
 	
@@ -23,6 +25,7 @@ public class MasterServerCommunication {
 	
 	private PacketReceiver receiver = null;
 	private Timer heartbeatTimer = null;
+	private long lastReceivedNotWorking;
 	
 	public MasterServerCommunication(Server server){
 		this.server = server;
@@ -59,6 +62,15 @@ public class MasterServerCommunication {
 					
 					}
 				
+				}else if(packet.type == PacketType.SERVERBROWSE_IN_ERROR){
+					if(System.currentTimeMillis() < lastReceivedNotWorking+ANTISPAM_DELAY) return;
+					
+					lastReceivedNotWorking = System.currentTimeMillis();
+					
+					if(MasterServer.byAddress(address) != null){
+						server.logger.warn("The master server reports that clients can not connect to this server");
+						server.logger.warn("Configure your Firewall/NAT to let through UDP on port " + server.getPort());
+					}
 				}
 			}
 		};

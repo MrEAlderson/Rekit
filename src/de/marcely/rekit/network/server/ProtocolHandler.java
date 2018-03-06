@@ -2,12 +2,14 @@ package de.marcely.rekit.network.server;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -27,6 +29,7 @@ import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketChunk;
 import de.marcely.rekit.network.packet.PacketFlag;
 import de.marcely.rekit.network.packet.PacketType;
+import de.marcely.rekit.util.IntCompressor;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
 
@@ -34,15 +37,13 @@ public class ProtocolHandler {
 	
 	private static final int TICKS = 50;
 	private static final long RESEND_ACK = 1000;
-	private static final long GARBAGE_COLLECTOR = 10000;
-	private static final long CHUNKBUFFER_LIFETIME = 30000;
 	
 	@Getter private final UDPSocket socket;
 	
 	public List<PacketReceiver> receivers = new ArrayList<PacketReceiver>();
 	private Queue<QueuedPacket> receiveQueue = new ConcurrentLinkedQueue<QueuedPacket>(), sendQueue = new ConcurrentLinkedQueue<QueuedPacket>();
 	private Map<Byte, QueuedPacket> sendQueuedAcks = new HashMap<>();
-	private Map<String, ChunkBuffer> bufferedChunks = new HashMap<>();
+	public Map<String, ChunkBuffer> bufferedChunks = new HashMap<>();
 	public java.util.Map<Short, Client> clients = new HashMap<>();
 	public java.util.Map<String, Client> clients2 = new HashMap<>();
 	
@@ -65,6 +66,7 @@ public class ProtocolHandler {
 		// run socket
 		final boolean result = socket.run(new SocketPump(){
 			public void receive(InetAddress address, int port, byte[] buffer) throws Exception {
+				System.out.println("EEEEEEEEEEEE" + buffer.length);
 				if(buffer.length < 4){
 					System.out.println("too short: " + Util.bytesToHex(buffer));
 					return;
@@ -85,13 +87,6 @@ public class ProtocolHandler {
 					schedule();
 				}
 			}, schedulerRepeating, schedulerRepeating);
-			
-			// garbage collector
-			this.scheduler.schedule(new TimerTask(){
-				public void run(){
-					scheduleGarbageCollector();
-				}
-			}, GARBAGE_COLLECTOR, GARBAGE_COLLECTOR);
 		}
 		
 		return result;
@@ -105,8 +100,10 @@ public class ProtocolHandler {
 		if(chunk.getChunksAmount() <= 1)
 			handleRawPacket(rawPacket.getAddress(), rawPacket.getPort(), chunk.getBuffer(), chunk);
 		else{
+			if(!isConnected(rawPacket.getAddress(), rawPacket.getPort())) return;
+			
 			// add to buffer
-			final ChunkBuffer buffer = getChunkBuffer(rawPacket.getAddress().getHostAddress() + ":" + rawPacket.getPort());
+			final ChunkBuffer buffer = getChunkBuffer(Util.getIdentifier(rawPacket.getAddress(), rawPacket.getPort()));
 			
 			buffer.getChunks().add(chunk);
 			
@@ -114,10 +111,12 @@ public class ProtocolHandler {
 			if(buffer.getChunks().size() == chunk.getChunksAmount()){
 				final BufferedPacketWriter stream = new BufferedPacketWriter();
 				
-				for(PacketChunk c:buffer.getChunks())
-					stream.write(c.getBuffer());
+				for(int i=0; i<buffer.getChunks().size(); i++)
+					stream.write(buffer.getChunks().get(i).getBuffer());
 				
 				stream.close();
+				
+				buffer.getChunks().clear();
 				
 				handleRawPacket(rawPacket.getAddress(), rawPacket.getPort(), stream.toByteArray(), chunk);
 			}
@@ -130,8 +129,38 @@ public class ProtocolHandler {
 			return;
 		}
 		
+		final Client client = clients2.get(Util.getIdentifier(address, port));
+		
+		// set connected
+		if(client != null){
+			if(client.getState() == ClientState.PENDING){
+				client.setState(ClientState.CONNECTED);
+				return;
+			}
+		}
+		
 		// convert to packet
-		final PacketType type = PacketType.byData(data);
+		PacketType type = null;
+		int offset = 0;
+		
+		System.out.println(Arrays.toString(lastChunk.getFlags()));
+		
+		if(lastChunk.hasFlag(PacketFlag.CONNLESS)){
+			type = PacketType.byConnlessData(data);
+			if(type != null) offset = type.idConnless.length;
+		}else{
+			final Entry<Integer, Integer> result = IntCompressor.unpack(data, 1);
+			
+			if(result != null){
+				offset = result.getKey();
+				
+				int msg = result.getValue();
+				final boolean isSystemMessage = (msg&1) != 0;
+				msg >>= 1;
+		
+				System.out.println(msg);
+			}
+		}
 		
 		if(type == null){
 			System.out.println("Error: received weird packet (Unkown packet (" + Util.bytesToHex(data) + ")");
@@ -145,7 +174,7 @@ public class ProtocolHandler {
 			e.printStackTrace();
 		}
 		
-		packet.readRawData(Arrays.copyOfRange(data, type.id.length, data.length));
+		packet.readRawData(Arrays.copyOfRange(data, offset, data.length));
 		
 		// fire event
 		for(PacketReceiver receiver:receivers)
@@ -221,13 +250,6 @@ public class ProtocolHandler {
 		}
 	}
 	
-	private void scheduleGarbageCollector(){
-		for(ChunkBuffer buffer:new ArrayList<>(bufferedChunks.values())){
-			if(System.currentTimeMillis()-buffer.getLastUpdate() > CHUNKBUFFER_LIFETIME)
-				bufferedChunks.remove(buffer.getIdentifier());
-		}
-	}
-	
 	private ChunkBuffer getChunkBuffer(String identifier){
 		if(bufferedChunks.containsKey(identifier)){
 			final ChunkBuffer buffer = bufferedChunks.get(identifier);
@@ -278,7 +300,7 @@ public class ProtocolHandler {
 			final PacketChunk chunk = new PacketChunk(address, port, packet.type.flags, (byte) -1, (byte) chunksAmount,
 					Arrays.copyOfRange(rawData, offset, offset+size));
 			
-			if(triedAmount == 0) chunk._preBuffer = packet.type.id;
+			if(triedAmount == 0) chunk._preBuffer = packet.type.idConnless;
 			successAmount += sendPacketChunk(chunk) ? 0 : 1;
 			triedAmount++;
 		}

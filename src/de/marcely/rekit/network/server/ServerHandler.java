@@ -43,11 +43,6 @@ public class ServerHandler {
 					
 					server.sendPacket(address, port, np);
 				
-				}else if(rawPacket.type == PacketType.SERVERBROWSE_IN_ERROR){
-					if(MasterServer.byAddress(address) != null){
-						server.logger.warn("The master server reports that clients can not connect to this server");
-						server.logger.warn("Configure your Firewall/NAT to let through UDP on port " + server.getPort());
-					}
 				}
 			}
 		};

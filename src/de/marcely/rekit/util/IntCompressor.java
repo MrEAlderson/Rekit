@@ -39,8 +39,8 @@ public class IntCompressor {
 	}
 	
 	public static Entry<Integer, Integer> /* New offset, Value */ unpack(byte[] buffer, int offset){
-        final int sign = (buffer[0] >> 6) & 1;
-        int value = buffer[0] & 63;
+        final int sign = (buffer[offset] >> 6) & 1;
+        int value = buffer[offset] & 63;
         
         do{
             if((buffer[offset] & 128) == 0) break;

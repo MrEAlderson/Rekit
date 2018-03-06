@@ -7,6 +7,7 @@ import de.marcely.rekit.network.packet.serverbrowse.*;
 
 public enum PacketType {
 	
+	// connless
 	MASTER_OUT_HANDSHAKE(new byte[]{ 'c', 'o', 'u', '2' }, PacketMasterOutHandshake.class, PacketFlag.CONNLESS),
 	MASTER_IN_HANDSHAKE(new byte[]{ 's', 'i', 'z', '2' }, PacketMasterInHandshake.class, PacketFlag.CONNLESS),
 	MASTER_OUT_HEARTBEAT(new byte[]{ 'b', 'e', 'a', '2' }, PacketMasterOutHeartbeat.class, PacketFlag.CONNLESS),
@@ -24,11 +25,18 @@ public enum PacketType {
 	public static final byte CONTROL_ACCEPT = 0x3;
 	public static final byte CONTROL_CLOSE = 0x4;
 	
-	public final byte[] id;
+	public int id;
+	public byte[] idConnless;
 	public final Class<? extends Packet> clazz;
 	public final PacketFlag[] flags;
 	
 	private PacketType(byte[] id, Class<? extends Packet> clazz, PacketFlag... flags){
+		this.idConnless = id;
+		this.clazz = clazz;
+		this.flags = flags;
+	}
+	
+	private PacketType(int id, Class<? extends Packet> clazz, PacketFlag... flags){
 		this.id = id;
 		this.clazz = clazz;
 		this.flags = flags;
@@ -43,15 +51,30 @@ public enum PacketType {
 		return false;
 	}
 	
-	public static @Nullable PacketType byData(byte[] data){
+	public static @Nullable PacketType byConnlessData(byte[] data){
 		for(PacketType type:values()){
-			for(int i=0; i<type.id.length; i++){
-				if(type.id[i] == data[i]){
-					if(i == type.id.length-1)
+			if(type.idConnless == null) continue;
+			
+			for(int i=0; i<type.idConnless.length; i++){
+				if(type.idConnless[i] == data[i]){
+					if(i == type.idConnless.length-1)
 						return type;
 				}else
 					break;
 			}
+		}
+		
+		return null;
+	}
+	
+	public static @Nullable PacketType byID(int id){
+		System.out.println(id);
+		
+		for(PacketType type:values()){
+			if(type.idConnless != null) continue;
+			
+			if(type.id == id)
+				return type;
 		}
 		
 		return null;
