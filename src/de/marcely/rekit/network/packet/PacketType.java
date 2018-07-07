@@ -17,7 +17,33 @@ public enum PacketType {
 	SERVERBROWSE_IN_OK(new byte[]{ 'f', 'w', 'o', 'k' }, PacketServerbrowseInError.class, PacketFlag.CONNLESS),
 	SERVERBROWSE_IN_ERROR(new byte[]{ 'f', 'w', 'e', 'r' }, PacketServerbrowseInError.class, PacketFlag.CONNLESS),
 	SERVERBROWSE_IN_GETINFO(new byte[]{ 'g', 'i', 'e', '3' }, PacketServerbrowseInGetInfo.class, PacketFlag.CONNLESS),
-	SERVERBROWSE_OUT_INFO(new byte[]{ 'i', 'n', 'f', '3' }, PacketServerbrowseOutInfo.class, PacketFlag.CONNLESS);
+	SERVERBROWSE_OUT_INFO(new byte[]{ 'i', 'n', 'f', '3' }, PacketServerbrowseOutInfo.class, PacketFlag.CONNLESS),
+	
+	GAME_SV_MOTD(1, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_BROADCAST(2, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_CHAT(3, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_KILL_MSG(4, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_SOUND_GLOBAL(5, null, PacketFlag.CONTROL),
+	GAME_SV_TUNE_PARAMS(6, null, PacketFlag.CONTROL),
+	GAME_SV_EXTRA_PROJECTILE(7, null, PacketFlag.CONTROL),
+	GAME_SV_READY_TO_ENTER(8, null, PacketFlag.CONTROL),
+	GAME_SV_WEAPON_PICKUP(9, null, PacketFlag.CONTROL),
+	GAME_SV_EMOITCON(10, null, PacketFlag.CONTROL),
+	GAME_SV_VOTE_CLEAR_OPTIONS(11, null, PacketFlag.CONTROL),
+	GAME_SV_VOTE_OPTION_ADD(12, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_VOTE_OPTION_REMOVE(13, null, PacketFlag.CONTROL),
+	GAME_SV_VOTE_SET(14, null, PacketFlag.CONTROL),
+	GAME_SV_VOTE_STATUS(15, null, PacketFlag.CONTROL),
+	GAME_CL_SAY(16, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_CL_SET_TEAM(17, null, PacketFlag.CONTROL),
+	GAME_CL_SET_SPECTATOR_MODE(18, null, PacketFlag.CONTROL),
+	GAME_CL_START_INFO(19, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_CL_CHANGE_INFO(20, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_CL_KILL(21, null, PacketFlag.CONTROL),
+	GAME_CL_EMOTICON(22, null, PacketFlag.CONTROL),
+	GAME_CL_VOTE(23, null, PacketFlag.CONTROL),
+	GAME_CL_CALL_VOTE(24, null, PacketFlag.CONTROL),
+	GAME_CL_IS_DDNET(25, null, PacketFlag.CONTROL);
 	
 	public static final byte CONTROL_KEEPALIVE = 0x0;
 	public static final byte CONTROL_CONNECT = 0x1;
