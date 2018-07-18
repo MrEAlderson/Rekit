@@ -2,6 +2,16 @@ package de.marcely.rekit.network.packet;
 
 import com.sun.istack.internal.Nullable;
 
+import de.marcely.rekit.network.packet.game.PacketGameClientCallVote;
+import de.marcely.rekit.network.packet.game.PacketGameClientChangeInfo;
+import de.marcely.rekit.network.packet.game.PacketGameClientEmoticon;
+import de.marcely.rekit.network.packet.game.PacketGameClientIsDDNet;
+import de.marcely.rekit.network.packet.game.PacketGameClientKill;
+import de.marcely.rekit.network.packet.game.PacketGameClientSay;
+import de.marcely.rekit.network.packet.game.PacketGameClientSetSpectatorMode;
+import de.marcely.rekit.network.packet.game.PacketGameClientSetTeam;
+import de.marcely.rekit.network.packet.game.PacketGameClientStartInfo;
+import de.marcely.rekit.network.packet.game.PacketGameClientVote;
 import de.marcely.rekit.network.packet.master.*;
 import de.marcely.rekit.network.packet.serverbrowse.*;
 
@@ -28,22 +38,23 @@ public enum PacketType {
 	GAME_SV_EXTRA_PROJECTILE(7, null, PacketFlag.CONTROL),
 	GAME_SV_READY_TO_ENTER(8, null, PacketFlag.CONTROL),
 	GAME_SV_WEAPON_PICKUP(9, null, PacketFlag.CONTROL),
-	GAME_SV_EMOITCON(10, null, PacketFlag.CONTROL),
+	GAME_SV_EMOTICON(10, null, PacketFlag.CONTROL),
 	GAME_SV_VOTE_CLEAR_OPTIONS(11, null, PacketFlag.CONTROL),
-	GAME_SV_VOTE_OPTION_ADD(12, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
-	GAME_SV_VOTE_OPTION_REMOVE(13, null, PacketFlag.CONTROL),
-	GAME_SV_VOTE_SET(14, null, PacketFlag.CONTROL),
-	GAME_SV_VOTE_STATUS(15, null, PacketFlag.CONTROL),
-	GAME_CL_SAY(16, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
-	GAME_CL_SET_TEAM(17, null, PacketFlag.CONTROL),
-	GAME_CL_SET_SPECTATOR_MODE(18, null, PacketFlag.CONTROL),
-	GAME_CL_START_INFO(19, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
-	GAME_CL_CHANGE_INFO(20, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
-	GAME_CL_KILL(21, null, PacketFlag.CONTROL),
-	GAME_CL_EMOTICON(22, null, PacketFlag.CONTROL),
-	GAME_CL_VOTE(23, null, PacketFlag.CONTROL),
-	GAME_CL_CALL_VOTE(24, null, PacketFlag.CONTROL),
-	GAME_CL_IS_DDNET(25, null, PacketFlag.CONTROL);
+	GAME_SV_VOTE_OPTION_ADD_LIST(12, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_VOTE_OPTION_ADD(13, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_SV_VOTE_OPTION_REMOVE(14, null, PacketFlag.CONTROL),
+	GAME_SV_VOTE_SET(15, null, PacketFlag.CONTROL),
+	GAME_SV_VOTE_STATUS(16, null, PacketFlag.CONTROL),
+	GAME_CL_SAY(17, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_CL_SET_TEAM(18, null, PacketFlag.CONTROL),
+	GAME_CL_SET_SPECTATOR_MODE(19, null, PacketFlag.CONTROL),
+	GAME_CL_START_INFO(20, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_CL_CHANGE_INFO(21, null, PacketFlag.CONTROL, PacketFlag.COMPRESSION),
+	GAME_CL_KILL(22, null, PacketFlag.CONTROL),
+	GAME_CL_EMOTICON(23, null, PacketFlag.CONTROL),
+	GAME_CL_VOTE(24, null, PacketFlag.CONTROL),
+	GAME_CL_CALL_VOTE(25, null, PacketFlag.CONTROL),
+	GAME_CL_IS_DDNET(26, null, PacketFlag.CONTROL);
 	
 	public static final byte CONTROL_KEEPALIVE = 0x0;
 	public static final byte CONTROL_CONNECT = 0x1;
@@ -94,8 +105,6 @@ public enum PacketType {
 	}
 	
 	public static @Nullable PacketType byID(int id){
-		System.out.println(id);
-		
 		for(PacketType type:values()){
 			if(type.idConnless != null) continue;
 			
@@ -104,5 +113,32 @@ public enum PacketType {
 		}
 		
 		return null;
+	}
+	
+	public @Nullable DataPacket newClientDataPacketInstance(){
+		switch(this){
+		case GAME_CL_SAY:
+			return new PacketGameClientSay();
+		case GAME_CL_SET_TEAM:
+			return new PacketGameClientSetTeam();
+		case GAME_CL_SET_SPECTATOR_MODE:
+			return new PacketGameClientSetSpectatorMode();
+		case GAME_CL_START_INFO:
+			return new PacketGameClientStartInfo();
+		case GAME_CL_CHANGE_INFO:
+			return new PacketGameClientChangeInfo();
+		case GAME_CL_KILL:
+			return new PacketGameClientKill();
+		case GAME_CL_EMOTICON:
+			return new PacketGameClientEmoticon();
+		case GAME_CL_VOTE:
+			return new PacketGameClientVote();
+		case GAME_CL_CALL_VOTE:
+			return new PacketGameClientCallVote();
+		case GAME_CL_IS_DDNET:
+			return new PacketGameClientIsDDNet();
+		default:
+			return null;
+		}
 	}
 }
