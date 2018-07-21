@@ -22,10 +22,12 @@ import de.marcely.rekit.network.ChunkBuffer;
 import de.marcely.rekit.network.QueuedPacket;
 import de.marcely.rekit.network.SocketPump;
 import de.marcely.rekit.network.UDPSocket;
+import de.marcely.rekit.network.master.MasterServerPackets;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunk;
 import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
+import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
 
@@ -38,12 +40,15 @@ public class ProtocolHandler {
 	public static final int PACKET_HEADER_SIZE = 3;
 	public static final int PACKET_DATA_OFFSET = 6;
 	public static final int PACKET_MAX_SEQUENCE = 1024;
+	public static final int PACKET_MAX_PAYLOAD = PACKET_MAX_SIZE - PACKET_DATA_OFFSET;
 	
 	public static final byte PACKET_TYPE_KEEP_ALIVE = 0;
 	public static final byte PACKET_TYPE_CONNECT = 1;
 	public static final byte PACKET_TYPE_CONNECT_ACCEPT = 2;
 	public static final byte PACKET_TYPE_ACCEPT = 3;
 	public static final byte PACKET_TYPE_CLOSE = 4;
+	
+	public static final int VANILLA_MAX_CLIENTS = 16;
 	
 	@Getter private final UDPSocket socket;
 	private final Server server;
@@ -72,7 +77,6 @@ public class ProtocolHandler {
 		// run socket
 		final boolean result = socket.run(new SocketPump(){
 			public void receive(InetAddress address, int port, byte[] buffer) throws Exception {
-				System.out.println("EEEEEEEEEEEE" + buffer.length);
 				if(buffer.length <= PACKET_MIN_SIZE || buffer.length >= PACKET_MAX_SIZE){
 					System.out.println("Packet is too big/small: " + buffer.length);
 					return;
@@ -99,13 +103,77 @@ public class ProtocolHandler {
 	}
 	
 	private void handleQueuedPacket(QueuedPacket rawPacket){
-		final Client client = getClient(rawPacket.getAddress(), rawPacket.getPort());
+		Client client = getClient(rawPacket.getAddress(), rawPacket.getPort());
 		byte[] buffer = rawPacket.getBuffer();
 		final PacketFlag[] flags = PacketFlag.ofBitMask((byte) (buffer[0] >> 4));
 		final int ack = ((buffer[0] & 0xF) << 8) | buffer[1];
 		final byte chunksAmount = buffer[2];
 		
-		buffer = handlePacket(flags, buffer, ack, chunksAmount, rawPacket.getAddress(), rawPacket.getPort(), client);
+		if(PacketFlag.has(flags, PacketFlag.CONNLESS)){
+			if(buffer.length < PACKET_DATA_OFFSET)
+				return;
+			
+			buffer = Util.arraycopy(buffer, PACKET_DATA_OFFSET, buffer.length);
+			
+			handleUnconnectedPacket(new PacketChunk(
+					new PacketSendFlag[]{ PacketSendFlag.CONNLESS },
+					buffer),
+						rawPacket.getAddress(), rawPacket.getPort());
+		
+		}else{
+			if(PacketFlag.has(flags, PacketFlag.COMPRESSION)){
+				if(PacketFlag.has(flags, PacketFlag.CONTROL))
+					return;
+				
+				try{
+					buffer = Util.huffmanDecompress(Util.arraycopy(buffer, PACKET_HEADER_SIZE, buffer.length));
+				}catch(IOException e){
+					e.printStackTrace();
+					return;
+				}
+			}else
+				buffer = Util.arraycopy(buffer, PACKET_HEADER_SIZE, buffer.length);
+			
+			if(PacketFlag.has(flags, PacketFlag.CONTROL) &&
+					buffer[0] == PACKET_TYPE_CONNECT){
+				
+				// get amount of client with same ip
+				int sameIPsAmount = 0;
+				
+				for(Client c:clients.values()){
+					if(c.getAddress().getAddress().getHostAddress().equals(rawPacket.getAddress().getHostAddress()))
+						sameIPsAmount++;
+				}
+				
+				if(sameIPsAmount > this.server.getMaxSameIPsAmount()){
+					sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
+							PACKET_TYPE_CLOSE, "Only " + this.server.getMaxSameIPsAmount() + " players with the same IP are allowed");
+					return;
+				}
+				
+				// check if server is full
+				if(this.clients.size() >= this.server.getMaxPlayers()){
+					sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
+							PACKET_TYPE_CLOSE, "This server is full");
+					return;
+				}
+				
+				// login
+				client = new Client(Main.SERVER, new InetSocketAddress(rawPacket.getAddress(), rawPacket.getPort()), getNextBestClientID());
+				
+				this.clients.put(client.getId(), client);
+				this.clients2.put(client.getIdentifier(), client);
+				
+				sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
+						PACKET_TYPE_CONNECT_ACCEPT, "");
+			}
+			
+			client.handleConnectedPacket(new Packet(
+					flags,
+					ack,
+					chunksAmount,
+					buffer));
+		}
 		
 		for(PacketChunk packet:PacketChunk.read(buffer, chunksAmount, client))
 			handlePacket(flags, packet.buffer, ack, chunksAmount, rawPacket.getAddress(), rawPacket.getPort(), client);
@@ -175,11 +243,11 @@ public class ProtocolHandler {
 						PACKET_TYPE_CONNECT_ACCEPT, "");
 			}
 			
-			handleConnectedPacket(new Packet(
+			client.handleConnectedPacket(new Packet(
 					flags,
 					ack,
 					chunksAmount,
-					buffer), client);
+					buffer));
 		}
 		
 		return buffer;
@@ -222,70 +290,107 @@ public class ProtocolHandler {
 	}
 	
 	private void handleUnconnectedPacket(PacketChunk packet, InetAddress address, int port){
-		System.out.println(Util.bytesToHex(packet.buffer));
+		if(packet.buffer.length != 9) return;
 		
-		/*if(packet.data.length != 9) return;
+		System.out.print(Util.bytesToHex(MasterServerPackets.SERVERBROWSE_GETINFO) + ":" + Util.bytesToHex(packet.buffer));
 		
-		chunk.buffer = Util.arraycopy(chunk.buffer, 4, 8);
-		
-		if(Util.compare(chunk.buffer, MasterServerPackets.SERVERBROWSE_GETINFO)){
-			
-		}else if(Util.compare(chunk.buffer, MasterServerPackets.SERVERBROWSE_GETINFO_64_LEGACY)){
-			
-		}*/
+		if(Util.compare(MasterServerPackets.SERVERBROWSE_GETINFO, packet.buffer, true))
+			sendServerInfo(address, port, packet.buffer[8], false);
+		else if(Util.compare(MasterServerPackets.SERVERBROWSE_GETINFO_64_LEGACY, packet.buffer, true))
+			sendServerInfo(address, port, packet.buffer[8], true);
 	}
 	
-	private void handleConnectedPacket(Packet packet, Client client){
-		if(PacketFlag.has(packet.flags, PacketFlag.RESEND))
-			resend();
+	private void sendServerInfo(InetAddress address, int port, int token, boolean legacy64){
+		BufferedWriteStream stream = new BufferedWriteStream();
 		
-		for(PacketFlag flag:packet.flags)
-			System.out.println(flag);
+		int currentPlayer = 0;
+		final int maxPlayersPerPacket = legacy64 ? 24 : VANILLA_MAX_CLIENTS;
 		
-		if(PacketFlag.has(packet.flags, PacketFlag.CONTROL)){
-			final byte type = packet.data[0];
+		while(true){
+			int playersAmount = this.clients.size()-currentPlayer;
 			
-			System.out.println(type);
+			if(playersAmount > maxPlayersPerPacket)
+				playersAmount = maxPlayersPerPacket;
 			
-			switch(type){
-			case PACKET_TYPE_CLOSE:
-				String reason = "";
-				
-				if(packet.data.length >= 2)
-					reason = new String(Util.arraycopy(packet.data, 1, packet.data.length), StandardCharsets.UTF_8);
-				
-				client.kick(new KickReason(reason));
-				break;
-				
-			case PACKET_TYPE_CONNECT:
-				if(client.getState() != ClientState.DISCONNECTED) return;
-				
-				client.setState(ClientState.PENDING);
-				
-				System.out.println("OK");
-				
-				sendControlPacket(client.getAddress().getAddress(), client.getAddress().getPort(), 0,
-						PACKET_TYPE_CONNECT_ACCEPT, "");
-				break;
-				
-			case PACKET_TYPE_CONNECT_ACCEPT:
-				if(client.getState() != ClientState.CONNECT) return;
-				
-				client.setState(ClientState.ONLINE);
-				
-				System.out.println("ONLINE!");
-				
-				sendControlPacket(client.getAddress().getAddress(), client.getAddress().getPort(), 0,
-						PACKET_TYPE_ACCEPT, "");
-				break;
+			
+			stream.write(legacy64 ?
+					MasterServerPackets.SERVERBROWSE_INFO_64_LEGACY :
+					MasterServerPackets.SERVERBROWSE_INFO);
+			stream.writeTWString("" + token);
+			stream.writeTWString(this.server.getGameVersion());
+			
+			if(legacy64){
+				stream.writeTWString(this.server.getServerBrowseName());
+			}else{
+				stream.writeTWString(this.clients.size() <= VANILLA_MAX_CLIENTS ?
+						this.server.getServerBrowseName() :
+						this.server.getServerBrowseName() + " [" + this.clients.size() + "/" + this.server.getMaxPlayers() + "]");
 			}
+			
+			stream.writeTWString(this.server.getMap().getName());
+			stream.writeTWString(this.server.getServerBrowseType());
+			stream.writeTWBoolean(this.server.isPasswordEnabled());
+			
+			if(!legacy64){
+				// players
+				stream.writeTWString("" + (this.clients.size() > VANILLA_MAX_CLIENTS ? VANILLA_MAX_CLIENTS : this.clients.size()));
+				stream.writeTWString("" + (this.server.getMaxPlayers() > VANILLA_MAX_CLIENTS ? VANILLA_MAX_CLIENTS : this.server.getMaxPlayers()));
+				// clients
+				stream.writeTWString("" + (this.clients.size() > VANILLA_MAX_CLIENTS ? VANILLA_MAX_CLIENTS : this.clients.size()));
+				stream.writeTWString("" + (this.server.getMaxPlayers() > VANILLA_MAX_CLIENTS ? VANILLA_MAX_CLIENTS : this.server.getMaxPlayers()));
+			
+			}else{
+				// players
+				stream.writeTWString("" + this.clients.size());
+				stream.writeTWString("" + this.server.getMaxPlayers());
+				// clients
+				stream.writeTWString("" + this.clients.size());
+				stream.writeTWString("" + this.server.getMaxPlayers());
+				
+				stream.writeTWInt(0); // offset
+			}
+			
+			for(int i=0; i<playersAmount; i++){
+				currentPlayer++;
+				
+				// TODO
+				stream.writeTWString("Name, max length: 16");
+				stream.writeTWString("Name max 12");
+				stream.writeTWString("Country 6");
+				stream.writeTWString("Score 6");
+				stream.writeTWString("0"); // is spectator, "1" if yes
+			}
+			
+			send(new PacketChunk(new PacketSendFlag[]{ PacketSendFlag.CONNLESS }, stream.toByteArray()),
+				address, port, (short) -1);
+			
+			stream.close();
+			
+			if(currentPlayer+1 >= this.clients.size())
+				break;
+			else
+				stream = new BufferedWriteStream();
+		}
+	}
+	
+	private void send(PacketChunk packet, InetAddress address, int port, short clientID){
+		if(packet.buffer.length >= PACKET_MAX_PAYLOAD){
+			new UnsupportedOperationException("Payload reached max size").printStackTrace();
+			return;
 		}
 		
-		client.setLastReceivedPacket(System.currentTimeMillis());
-	}
-	
-	private void resend(){
-		
+		if(PacketSendFlag.has(packet.flags, PacketSendFlag.CONNLESS)){
+			final byte[] buffer = new byte[packet.buffer.length+PACKET_DATA_OFFSET];
+			
+			for(int i=0; i<=5; i++)
+				buffer[i] = (byte) 0xFF;
+			
+			System.arraycopy(packet.buffer, 0, buffer, PACKET_DATA_OFFSET, packet.buffer.length);
+			
+			this.socket.sendRawPacket(address, port, buffer);
+			
+			return;
+		}
 	}
 	
 	private void tick(){
@@ -354,4 +459,36 @@ public class ProtocolHandler {
 		
 		return -1;
 	}
+	
+    public static boolean isSequenceInBackroom(int seq, int ack){
+        final int bottom = ack - ProtocolHandler.PACKET_MAX_SEQUENCE/2;
+        
+        if(bottom < 0){
+            if(seq <= ack)
+                return true;
+            else if(seq >= (bottom + ProtocolHandler.PACKET_MAX_SEQUENCE))
+                return true;
+        }else if (seq <= ack && seq >= bottom)
+            return true;
+
+        return false;
+    }
+    
+    public void sendPacket(Packet packet, InetAddress address, int port){
+    	byte[] compressedData = null;
+    	final byte[] header = new byte[PACKET_HEADER_SIZE];
+    	
+    	try{
+			compressedData = Util.huffmanCompress(packet.data);
+		}catch(IOException e){
+			e.printStackTrace();
+			return;
+		}
+    	
+        header[0] = (byte) ((((int) (packet.flagsMask | PacketFlag.COMPRESSION.getMask()) << 4) & 0xF0) | ((packet.ack >> 8) & 0xF));
+        header[1] = (byte) (packet.ack & 0xFF);
+        header[2] = (byte) packet.chunksAmount;
+        
+        this.socket.sendRawPacket(address, port, Util.concat(header, compressedData));
+    }
 }

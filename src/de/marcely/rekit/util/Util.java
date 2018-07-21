@@ -36,6 +36,16 @@ public class Util {
 		return c;
     }
     
+    public static <T>T[] concat(T[] a1, T[] a2){
+    	@SuppressWarnings("unchecked")
+		final T[] c = (T[]) new Object[a1.length+a2.length];
+    	
+		System.arraycopy(a1, 0, c, 0, a1.length);
+		System.arraycopy(a2, 0, c, a1.length, a2.length);
+		
+		return c;
+    }
+    
     private final static char[] HEXMAP = "0123456789ABCDEF".toCharArray();
     public static String bytesToHex(byte... bytes){
         String str = "";
@@ -105,7 +115,11 @@ public class Util {
     }
     
     public static boolean compare(byte[] a1, byte[] a2){
-    	if(a1.length != a2.length) return false;
+    	return compare(a1, a2, false);
+    }
+    
+    public static boolean compare(byte[] a1, byte[] a2, boolean ignoreLength){
+    	if(!ignoreLength && a1.length != a2.length) return false;
     	
     	for(int i=0; i<a1.length; i++){
     		if(a1[i] != a2[i])

@@ -1,13 +1,13 @@
 package de.marcely.rekit.map.index;
 
-import de.marcely.rekit.map.Map;
+import de.marcely.rekit.map.TWMap;
 
 public class IndexManager {
 	
-	public final Map map;
+	public final TWMap map;
 	public final int index;
 	
-	public IndexManager(Map map, int index){
+	public IndexManager(TWMap map, int index){
 		this.map = map;
 		this.index = index;
 	}

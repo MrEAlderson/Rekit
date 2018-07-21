@@ -1,6 +1,7 @@
 package de.marcely.rekit.network.packet.chunk;
 
-import de.marcely.rekit.util.BufferedWriteStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 public class PacketChunkHeader {
 	
@@ -16,7 +17,7 @@ public class PacketChunkHeader {
 		this.sequence = sequence;
 	}
 	
-	public void write(BufferedWriteStream stream){
+	public void write(OutputStream stream) throws IOException {
 		final byte[] buffer = new byte[PacketChunkFlag.has(flags, PacketChunkFlag.VITAL) ? 3 : 2];
 		
         buffer[0] = (byte) ((((int) PacketChunkFlag.toBitMask(this.flags) & 0b11) << 6) |

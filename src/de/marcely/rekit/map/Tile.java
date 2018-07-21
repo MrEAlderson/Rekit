@@ -2,10 +2,10 @@ package de.marcely.rekit.map;
 
 public class Tile {
 	
-	public final Map map;
+	public final TWMap map;
 	public final int x, y, index;
 	
-	public Tile(Map map, int x, int y, int index){
+	public Tile(TWMap map, int x, int y, int index){
 		this.map = map;
 		this.x = x;
 		this.y = y;

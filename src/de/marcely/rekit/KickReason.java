@@ -25,7 +25,9 @@ public class KickReason {
 	
 	
 	public static enum KickReasonType {
-		TIMEOUT("Timeout (Network lag?)"),
+		WEAK_CONNECTION_TIMEOUT("Too weak connection: Timeout"),
+		WEAK_CONNECTION_ACK("Too weak connection: Not acked for too long"),
+		WEAK_CONNECTION_OUT_OF_BUFFER("Too weak connection: Out of buffer"),
 		KICK("You have been kicked of the server."),
 		BANNED("You are not permitted to join the server for %1 minutes."),
 		ERROR("An error occured."),

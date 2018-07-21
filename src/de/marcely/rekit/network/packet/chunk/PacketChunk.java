@@ -36,7 +36,7 @@ public class PacketChunk {
 				if(header.sequence == (client.ack+1) % ProtocolHandler.PACKET_MAX_SEQUENCE)
 					client.ack = (client.ack+1) % ProtocolHandler.PACKET_MAX_SEQUENCE;
 				else{
-					if(isSequenceInBackroom(header.sequence, client.ack))
+					if(ProtocolHandler.isSequenceInBackroom(header.sequence, client.ack))
 						continue;
 					
 					client.signalResend();
@@ -49,22 +49,10 @@ public class PacketChunk {
 				break;
 			
 			list.add(new PacketChunk(new PacketSendFlag[0], Util.arraycopy(buffer, offset, header.size+offset)));
+			
+			offset += header.size;
 		}
 		
 		return list;
 	}
-	
-    private static boolean isSequenceInBackroom(int seq, int ack){
-        final int bottom = ack - ProtocolHandler.PACKET_MAX_SEQUENCE/2;
-        
-        if(bottom < 0){
-            if(seq <= ack)
-                return true;
-            else if(seq >= (bottom + ProtocolHandler.PACKET_MAX_SEQUENCE))
-                return true;
-        }else if (seq <= ack && seq >= bottom)
-            return true;
-
-        return false;
-    }
 }

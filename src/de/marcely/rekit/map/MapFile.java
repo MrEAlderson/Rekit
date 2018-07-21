@@ -48,7 +48,7 @@ public class MapFile {
 		this.file = file;
 	}
 	
-	public @Nullable Map load(){
+	public @Nullable TWMap load(){
 		LOGGER.info("Loading map '" + file.getName() + "'...");
 		
 		try{
@@ -168,7 +168,7 @@ public class MapFile {
 							tiles[ti] = new MapTile(reader);
 						
 						if(layerTile.flags == 1){ // is game layer
-							final Map map = new Map(file, file.getName().replace("_" + checksum, "").replace(".map", ""), checksum, layerTile.width, layerTile.height);
+							final TWMap map = new TWMap(file, file.getName().replace("_" + checksum, "").replace(".map", ""), checksum, layerTile.width, layerTile.height);
 							
 							for(int tx=0; tx<layerTile.width; tx++){
 								for(int ty=0; ty<layerTile.height; ty++){

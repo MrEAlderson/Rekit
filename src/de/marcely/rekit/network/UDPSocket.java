@@ -8,7 +8,6 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Arrays;
 
-import de.marcely.rekit.util.Util;
 import lombok.Getter;
 
 public class UDPSocket {
@@ -69,8 +68,6 @@ public class UDPSocket {
 	
 	public boolean sendRawPacket(InetAddress address, int port, byte[] data){
 		final DatagramPacket sendPacket = new DatagramPacket(data, data.length, address, port);
-		
-		System.out.println("SEND:" + Util.bytesToHex(data));
 		
 		try{
 			socket.send(sendPacket);

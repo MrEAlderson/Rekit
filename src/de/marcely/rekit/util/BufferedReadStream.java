@@ -76,7 +76,7 @@ public class BufferedReadStream extends ByteArrayInputStream {
 		this.pos = off;
 	}
 	
-	public int readInt(){
+	public int readTWInt(){
 		final Entry<Integer, Integer> result = IntCompressor.unpack(this.buf, this.pos);
 		
 		this.pos = result.getKey();
@@ -84,7 +84,7 @@ public class BufferedReadStream extends ByteArrayInputStream {
 		return result.getValue();
 	}
 	
-	public String readString(){
+	public String readTWString(){
 		int end = this.pos;
 		
 		while(this.buf[end] != 0x00)
@@ -100,8 +100,8 @@ public class BufferedReadStream extends ByteArrayInputStream {
 		return new String(result, StandardCharsets.UTF_8);
 	}
 	
-	public boolean readBoolean(){
-		return readInt() >= 1;
+	public boolean readTWBoolean(){
+		return readTWInt() >= 1;
 	}
 	
 	@Override

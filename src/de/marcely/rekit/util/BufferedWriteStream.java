@@ -3,6 +3,7 @@ package de.marcely.rekit.util;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public class BufferedWriteStream extends OutputStream {
@@ -105,6 +106,19 @@ public class BufferedWriteStream extends OutputStream {
 	
 	public void writeBoolean(boolean b){
 		writeByte(b == true ? (byte) 1 : (byte) 0);
+	}
+	
+	public void writeTWInt(int val){
+		write(IntCompressor.pack(val));
+	}
+	
+	public void writeTWString(String val){
+		write(val.getBytes(StandardCharsets.UTF_8));
+		write(0x00);
+	}
+	
+	public void writeTWBoolean(boolean val){
+		writeTWInt(val ? 1 : 0);
 	}
 	
 	public byte[] toByteArray(){
