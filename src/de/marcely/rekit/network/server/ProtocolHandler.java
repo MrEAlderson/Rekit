@@ -168,22 +168,28 @@ public class ProtocolHandler {
 						PACKET_TYPE_CONNECT_ACCEPT, "");
 			}
 			
-			client.handleConnectedPacket(new Packet(
-					flags,
-					ack,
-					chunksAmount,
-					buffer));
+			if(client != null){
+				client.handleSysConnectedPacket(new Packet(
+						flags,
+						ack,
+						chunksAmount,
+						buffer));
+			}
 		}
 		
-		for(PacketChunk packet:PacketChunk.read(buffer, chunksAmount, client))
-			handlePacket(flags, packet.buffer, ack, chunksAmount, rawPacket.getAddress(), rawPacket.getPort(), client);
+		if(client != null && !PacketFlag.has(flags, PacketFlag.CONNLESS)){
+			for(PacketChunk packet:PacketChunk.read(buffer, chunksAmount, client))
+				client.handlePacket(packet);
+		}
+		
+		System.out.println("!!!!!123 " + buffer.length);
 	}
 	
 	/*private void handlePacket(Packet packet, InetAddress address, int port, @Nullable Client client){
 		handlePacket(packet.flags, packet.data, packet.ack, packet.chunksAmount, address, port, client);
 	}*/
 	
-	private byte[] handlePacket(PacketFlag[] flags, byte[] buffer, int ack, int chunksAmount, InetAddress address, int port, @Nullable Client client){
+	/*private byte[] handlePacket(PacketFlag[] flags, byte[] buffer, int ack, int chunksAmount, InetAddress address, int port, @Nullable Client client){
 		if(PacketFlag.has(flags, PacketFlag.CONNLESS)){
 			if(buffer.length < PACKET_DATA_OFFSET)
 				return buffer;
@@ -251,7 +257,7 @@ public class ProtocolHandler {
 		}
 		
 		return buffer;
-	}
+	}*/
 	
 	public void sendControlPacket(InetAddress address, int port, int ack, byte type, String extra){
 		final byte[] extraRaw = extra.getBytes(StandardCharsets.UTF_8);
@@ -291,8 +297,6 @@ public class ProtocolHandler {
 	
 	private void handleUnconnectedPacket(PacketChunk packet, InetAddress address, int port){
 		if(packet.buffer.length != 9) return;
-		
-		System.out.print(Util.bytesToHex(MasterServerPackets.SERVERBROWSE_GETINFO) + ":" + Util.bytesToHex(packet.buffer));
 		
 		if(Util.compare(MasterServerPackets.SERVERBROWSE_GETINFO, packet.buffer, true))
 			sendServerInfo(address, port, packet.buffer[8], false);
@@ -354,10 +358,10 @@ public class ProtocolHandler {
 				currentPlayer++;
 				
 				// TODO
-				stream.writeTWString("Name, max length: 16");
-				stream.writeTWString("Name max 12");
-				stream.writeTWString("Country 6");
-				stream.writeTWString("Score 6");
+				stream.writeTWString("Name max length16");
+				stream.writeTWString("Name max12");
+				stream.writeTWString("Coun6");
+				stream.writeTWString("Scor6");
 				stream.writeTWString("0"); // is spectator, "1" if yes
 			}
 			

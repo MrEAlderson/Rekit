@@ -10,9 +10,11 @@ import de.marcely.rekit.KickReason;
 import de.marcely.rekit.KickReason.KickReasonType;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
+import de.marcely.rekit.network.packet.chunk.PacketChunk;
 import de.marcely.rekit.network.packet.chunk.PacketChunkFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunkHeader;
 import de.marcely.rekit.network.packet.chunk.PacketChunkResend;
+import de.marcely.rekit.util.BufferedReadStream;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +29,7 @@ public class Client {
 	@Getter private final Server server;
 	@Getter private final InetSocketAddress address;
 	@Getter private final short id;
+	@Getter private final ClientHandler handler;
 	
 	@Setter private ClientState state = ClientState.DISCONNECTED;
 	@Getter @Setter private long lastReceivedPacket = System.currentTimeMillis();
@@ -42,6 +45,7 @@ public class Client {
 		this.server = server;
 		this.address = address;
 		this.id = id;
+		this.handler = new ClientHandler(this);
 	}
 	
 	public String getIdentifier(){
@@ -107,6 +111,8 @@ public class Client {
 		if(System.currentTimeMillis() - lastKeepAlive >= KEEP_ALIVE_TIME){
 			switch(state){
 			case ONLINE:
+			case ONLINE_AUTH:
+			case ONLINE_CONNECTING:
 				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_KEEP_ALIVE, "");
 				break;
 				
@@ -130,7 +136,7 @@ public class Client {
 		this.resendPacket.flagsMask |= PacketFlag.RESEND.getMask();
 	}
 	
-	public void handleConnectedPacket(Packet packet){
+	public void handleSysConnectedPacket(Packet packet){
 		if(packet.hasFlag(PacketFlag.RESEND))
 			resend();
 		
@@ -169,9 +175,70 @@ public class Client {
 		}else if(getState() == ClientState.PENDING)
 			setState(ClientState.ONLINE);
 		
-		if(getState() == ClientState.ONLINE){
+		if(getState().isOnline()){
 			setLastReceivedPacket(System.currentTimeMillis());
 			ackChunks(packet.ack);
+		}
+	}
+	
+	public void handlePacket(PacketChunk packet){
+		final BufferedReadStream stream = new BufferedReadStream(packet.buffer);
+		
+		try{
+			handleConnectedPacketStream(stream);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		stream.close();
+	}
+	
+	private void handleConnectedPacketStream(BufferedReadStream stream) throws Exception {
+		// stream.read(10);
+		
+		final int header = stream.readTWInt();
+		final boolean isSystem = (header&1) != 0;
+		final int type = header >> 1;
+		
+		System.out.println(isSystem + " :/ " + type + " " + stream.available());
+		
+		if(isSystem){
+			switch(type){
+			case PacketHandler.MSG_CL_INFO:
+				this.handler.handleMsgInfo(stream);
+				break;
+			
+			case PacketHandler.MSG_CL_REQUEST_MAP_DATA:
+				this.handler.handleMsgRequestMapData(stream);
+				break;
+				
+			case PacketHandler.MSG_CL_READY:
+				this.handler.handleMsgReady(stream);
+				break;
+				
+			case PacketHandler.MSG_CL_ENTER_GAME:
+				this.handler.handleMsgEnterGame(stream);
+				break;
+				
+			case PacketHandler.MSG_CL_INPUT:
+				this.handler.handleMsgInput(stream);
+				break;
+				
+			case PacketHandler.MSG_CL_RCON_CMD:
+				this.handler.handleMsgRconCMD(stream);
+				break;
+				
+			case PacketHandler.MSG_CL_RCON_AUTH:
+				this.handler.handleMsgRconAuth(stream);
+				break;
+				
+			case PacketHandler.MSG_PING:
+				this.handler.handleMsgPing(stream);
+				break;
+			}
+		
+		}else{
+			
 		}
 	}
 	
