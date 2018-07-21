@@ -3,6 +3,7 @@ package de.marcely.rekit.network.server;
 import java.net.InetSocketAddress;
 
 import de.marcely.rekit.KickReason;
+import de.marcely.rekit.KickReason.KickReasonType;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketType;
 import de.marcely.rekit.util.Util;
@@ -11,7 +12,8 @@ import lombok.Setter;
 
 public class Client {
 	
-	public static final long TIMEOUT = 8000;
+	private static final long TIMEOUT = 8000;
+	private static final long KEEP_ALIVE_TIME = 1000;
 	
 	@Getter private final Server server;
 	@Getter private final InetSocketAddress address;
@@ -20,6 +22,9 @@ public class Client {
 	@Setter private ClientState state = ClientState.DISCONNECTED;
 	@Getter @Setter private long lastReceivedPacket = System.currentTimeMillis();
 	@Getter private final long loginDate = System.currentTimeMillis();
+	private long lastKeepAlive = System.currentTimeMillis();
+	
+	public int ack = 0;
 	
 	public Client(Server server, InetSocketAddress address, short id){
 		this.server = server;
@@ -50,7 +55,7 @@ public class Client {
 		if(!close())
 			return false;
 		
-		// this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_CLOSE, reason.getMessage());
+		server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CLOSE, reason.getMessage());
 		
 		return true;
 	}
@@ -73,10 +78,42 @@ public class Client {
 		return true;
 	}
 	
+	public void tick(){
+		if(System.currentTimeMillis() - lastReceivedPacket >= TIMEOUT){
+			kick(new KickReason(KickReasonType.TIMEOUT));
+			return;
+		}
+		
+		if(System.currentTimeMillis() - lastKeepAlive >= KEEP_ALIVE_TIME){
+			switch(state){
+			case ONLINE:
+				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_KEEP_ALIVE, "");
+				break;
+				
+			case CONNECT:
+				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CONNECT, "");
+				break;
+				
+			case PENDING:
+				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CONNECT_ACCEPT, "");
+				break;
+				
+			default:
+				break;
+			}
+			
+			lastKeepAlive = System.currentTimeMillis();
+		}
+	}
+	
 	public void ping(){
 		// if(state == ClientState.CONNECTED)
 		//	this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_KEEPALIVE, null);
 		//else if(state == ClientState.PENDING)
 		//	this.server.protocol.sendPacketControl(address.getAddress(), address.getPort(), PacketType.CONTROL_CONNECT_ACCEPT, null);
+	}
+	
+	public void signalResend(){
+		
 	}
 }

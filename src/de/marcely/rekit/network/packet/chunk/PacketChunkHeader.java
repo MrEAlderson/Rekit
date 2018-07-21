@@ -1,13 +1,14 @@
 package de.marcely.rekit.network.packet.chunk;
 
-import de.marcely.rekit.util.BufferedReadStream;
 import de.marcely.rekit.util.BufferedWriteStream;
 
 public class PacketChunkHeader {
 	
 	public final PacketChunkFlag[] flags;
-	public final int size;
+	public int size;
 	public final int sequence;
+	
+	public int newOffset;
 	
 	public PacketChunkHeader(PacketChunkFlag[] flags, int size, int sequence){
 		this.flags = flags;
@@ -30,16 +31,20 @@ public class PacketChunkHeader {
         stream.write(buffer);
 	}
 	
-	public static PacketChunkHeader read(BufferedReadStream stream){
-		final byte header1 = stream.readByte();
-		final byte header2 = stream.readByte();
+	public static PacketChunkHeader read(byte[] buffer, int offset){
+		final byte header1 = buffer[offset++];
+		final byte header2 = buffer[offset++];
 		final PacketChunkFlag[] flags = PacketChunkFlag.ofBitMask((byte) ((header1 >> 6) & 0b11));
 		final int size = ((header1 & 0b111111) << 4) | (header2 & 0b1111);
 		int sequence = -1;
 		
 		if(PacketChunkFlag.has(flags, PacketChunkFlag.VITAL))
-			sequence = ((header2 & 0b1111_0000) << 2) | (stream.readByte());
+			sequence = ((header2 & 0b1111_0000) << 2) | (buffer[offset++]);
 		
-		return new PacketChunkHeader(flags, size, sequence);
+		final PacketChunkHeader header = new PacketChunkHeader(flags, size, sequence);
+		
+		header.newOffset = offset;
+		
+		return header;
 	}
 }

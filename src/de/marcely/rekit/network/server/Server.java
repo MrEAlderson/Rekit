@@ -37,7 +37,7 @@ public class Server implements RekitServer {
 		this.logger.info("Starting server with the port " + getPort() + "...");
 		
 		if(protocol.run()){
-			this.masterserver.run();
+			// this.masterserver.run();
 			this.handler.run();
 			
 			return true;

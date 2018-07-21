@@ -7,7 +7,6 @@ import com.sun.istack.internal.Nullable;
 
 public enum PacketChunkFlag {
 	
-	NONE((byte) 0x0),
 	VITAL((byte) 0x1),
 	RESEND((byte) 0x2);
 	

@@ -2,6 +2,8 @@ package de.marcely.rekit.network.master;
 
 public class MasterServerPackets {
 	
+	public static final byte LENGTH = 4;
+	
 	public static final byte[] SERVERBROWSE_HEARTBEAT = { 'b', 'e', 'a', '2' };
 	
 	public static final byte[] SERVERBROWSE_GETLIST = { 'r', 'e', 'q', '2' };
