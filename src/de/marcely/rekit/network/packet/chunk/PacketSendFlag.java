@@ -11,7 +11,7 @@ public enum PacketSendFlag {
 	CONNLESS((byte) 0x2),
 	FLUSH((byte) 0x4);
 	
-	private final byte mask;
+	public final byte mask;
 	
 	private PacketSendFlag(byte mask){
 		this.mask = mask;

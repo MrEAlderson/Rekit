@@ -16,8 +16,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.sun.istack.internal.Nullable;
 
-import de.marcely.rekit.KickReason;
 import de.marcely.rekit.Main;
+import de.marcely.rekit.Message;
 import de.marcely.rekit.network.ChunkBuffer;
 import de.marcely.rekit.network.QueuedPacket;
 import de.marcely.rekit.network.SocketPump;
@@ -26,7 +26,9 @@ import de.marcely.rekit.network.master.MasterServerPackets;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunk;
+import de.marcely.rekit.network.packet.chunk.PacketChunkFlag;
 import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
+import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
@@ -82,7 +84,7 @@ public class ProtocolHandler {
 					return;
 				}
 				
-				receiveQueue.add(new QueuedPacket(address, port, (byte) 0xFF, null, buffer));
+				receiveQueue.add(new QueuedPacket(address, port, buffer));
 			}
 		});
 		
@@ -121,21 +123,23 @@ public class ProtocolHandler {
 						rawPacket.getAddress(), rawPacket.getPort());
 		
 		}else{
+			buffer = Util.arraycopy(buffer, PACKET_HEADER_SIZE, buffer.length);
+			
 			if(PacketFlag.has(flags, PacketFlag.COMPRESSION)){
 				if(PacketFlag.has(flags, PacketFlag.CONTROL))
 					return;
 				
 				try{
-					buffer = Util.huffmanDecompress(Util.arraycopy(buffer, PACKET_HEADER_SIZE, buffer.length));
+					buffer = Util.huffmanDecompress(buffer);
 				}catch(IOException e){
 					e.printStackTrace();
 					return;
 				}
-			}else
-				buffer = Util.arraycopy(buffer, PACKET_HEADER_SIZE, buffer.length);
+			}
 			
 			if(PacketFlag.has(flags, PacketFlag.CONTROL) &&
-					buffer[0] == PACKET_TYPE_CONNECT){
+					buffer[0] == PACKET_TYPE_CONNECT &&
+					client == null){
 				
 				// get amount of client with same ip
 				int sameIPsAmount = 0;
@@ -166,6 +170,16 @@ public class ProtocolHandler {
 				
 				sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
 						PACKET_TYPE_CONNECT_ACCEPT, "");
+			
+				if(client != null){
+					client.handleSysConnectedPacket(new Packet(
+							flags,
+							ack,
+							chunksAmount,
+							buffer));
+				}
+				
+				return;
 			}
 			
 			if(client != null){
@@ -178,11 +192,11 @@ public class ProtocolHandler {
 		}
 		
 		if(client != null && !PacketFlag.has(flags, PacketFlag.CONNLESS)){
-			for(PacketChunk packet:PacketChunk.read(buffer, chunksAmount, client))
+			final List<PacketChunk> packets = PacketChunk.read(buffer, chunksAmount, client);
+			
+			for(PacketChunk packet:packets)
 				client.handlePacket(packet);
 		}
-		
-		System.out.println("!!!!!123 " + buffer.length);
 	}
 	
 	/*private void handlePacket(Packet packet, InetAddress address, int port, @Nullable Client client){
@@ -366,7 +380,7 @@ public class ProtocolHandler {
 			}
 			
 			send(new PacketChunk(new PacketSendFlag[]{ PacketSendFlag.CONNLESS }, stream.toByteArray()),
-				address, port, (short) -1);
+				address, port, null);
 			
 			stream.close();
 			
@@ -377,7 +391,7 @@ public class ProtocolHandler {
 		}
 	}
 	
-	private void send(PacketChunk packet, InetAddress address, int port, short clientID){
+	public void send(PacketChunk packet, InetAddress address, int port, @Nullable Client client){
 		if(packet.buffer.length >= PACKET_MAX_PAYLOAD){
 			new UnsupportedOperationException("Payload reached max size").printStackTrace();
 			return;
@@ -395,6 +409,21 @@ public class ProtocolHandler {
 			
 			return;
 		}
+		
+		if(client == null) return;
+		
+		PacketChunkFlag[] flags = null;
+		
+		if(PacketSendFlag.has(packet.flags, PacketSendFlag.VITAL))
+			flags = new PacketChunkFlag[]{ PacketChunkFlag.VITAL };
+		else
+			flags = new PacketChunkFlag[0];
+		
+		if(client.queueChunk(flags, packet.buffer)){
+			if(PacketSendFlag.has(packet.flags, PacketSendFlag.FLUSH))
+				client.flush();
+		}else
+			client.kick(Message.KICK_ERROR.msg, KickCauseType.SERVER);
 	}
 	
 	private void tick(){
@@ -405,13 +434,8 @@ public class ProtocolHandler {
 			handleQueuedPacket(packet);
 		
 		// send
-		while((packet = sendQueue.poll()) != null){
+		while((packet = sendQueue.poll()) != null)
 			socket.sendRawPacket(packet.getAddress(), packet.getPort(), packet.getBuffer());
-			
-			// check ack
-			if(packet.getAckID() != -1 && packet.getAckID() != 0)
-				sendQueuedAcks.put(packet.getAckID(), packet);
-		}
 		
 		for(Client client:clients.values())
 			client.tick();
@@ -439,17 +463,6 @@ public class ProtocolHandler {
 	
 	public Client getClient(InetAddress address, int port){
 		return clients2.get(Util.getIdentifier(address, port));
-	}
-	
-	private @Nullable KickReason runCanJoinEvent(InetAddress address, int port){
-		for(PacketReceiver receiver:receivers){
-			final KickReason reason = receiver.canJoin(address, port);
-			
-			if(reason != null)
-				return reason;
-		}
-		
-		return null;
 	}
 	
 	private short getNextBestClientID(){
@@ -481,6 +494,8 @@ public class ProtocolHandler {
     public void sendPacket(Packet packet, InetAddress address, int port){
     	byte[] compressedData = null;
     	final byte[] header = new byte[PACKET_HEADER_SIZE];
+    	
+    	System.out.println(Util.bytesToHex(packet.data));
     	
     	try{
 			compressedData = Util.huffmanCompress(packet.data);

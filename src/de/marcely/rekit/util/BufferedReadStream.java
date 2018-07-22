@@ -7,6 +7,8 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map.Entry;
 
+import de.marcely.rekit.util.TWStream.SanitizeType;
+
 public class BufferedReadStream extends ByteArrayInputStream {
 	
 	public BufferedReadStream(byte[] data){
@@ -85,6 +87,10 @@ public class BufferedReadStream extends ByteArrayInputStream {
 	}
 	
 	public String readTWString(){
+		return readTWString(SanitizeType.SANITIZE);
+	}
+	
+	public String readTWString(SanitizeType sant){
 		int end = this.pos;
 		
 		while(this.buf[end] != 0x00)
@@ -97,7 +103,47 @@ public class BufferedReadStream extends ByteArrayInputStream {
 		
 		this.pos = end+1;
 		
-		return new String(result, StandardCharsets.UTF_8);
+		final String str = new String(result, StandardCharsets.UTF_8);
+		String resultString = null;
+		
+		if(sant == SanitizeType.SANITIZE){
+			final StringBuilder builder = new StringBuilder();
+			
+			for(int i=0; i<str.length(); i++){
+				final char c = str.charAt(i);
+				
+				if(c < 32 || c == '\r' || c == '\n' || c == '\t')
+					continue;
+				
+				builder.append(c);
+			}
+			resultString = builder.toString();
+		
+		}else if(sant == SanitizeType.SANITIZE_CC){
+			final StringBuilder builder = new StringBuilder();
+			
+			for(int i=0; i<str.length(); i++){
+				final char c = str.charAt(i);
+				
+				if(c < 32)
+					continue;
+				
+				builder.append(c);
+			}
+			resultString = builder.toString();
+		
+		}else if(sant == SanitizeType.SKIP_START_WHITESPACES){
+			for(int i=0; i<str.length(); i++){
+				final char c = str.charAt(i);
+				
+				if(c == ' ' || c == '\t' || c == '\n' || c == '\r'){
+					resultString = str.substring(i);
+					break;
+				}
+			}
+		}
+		
+		return resultString != null ? resultString : "";
 	}
 	
 	public boolean readTWBoolean(){

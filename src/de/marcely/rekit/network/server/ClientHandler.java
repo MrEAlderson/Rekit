@@ -1,6 +1,8 @@
 package de.marcely.rekit.network.server;
 
+import de.marcely.rekit.Message;
 import de.marcely.rekit.network.packet.DataPacket;
+import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
 import de.marcely.rekit.network.packet.game.PacketGameClientCallVote;
 import de.marcely.rekit.network.packet.game.PacketGameClientChangeInfo;
 import de.marcely.rekit.network.packet.game.PacketGameClientEmoticon;
@@ -11,7 +13,10 @@ import de.marcely.rekit.network.packet.game.PacketGameClientSetSpectatorMode;
 import de.marcely.rekit.network.packet.game.PacketGameClientSetTeam;
 import de.marcely.rekit.network.packet.game.PacketGameClientStartInfo;
 import de.marcely.rekit.network.packet.game.PacketGameClientVote;
+import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.util.BufferedReadStream;
+import de.marcely.rekit.util.BufferedWriteStream;
+import de.marcely.rekit.util.TWStream.SanitizeType;
 
 public class ClientHandler implements PacketHandler {
 
@@ -23,7 +28,28 @@ public class ClientHandler implements PacketHandler {
 	
 	@Override
 	public void handleMsgInfo(BufferedReadStream stream){
+		if(client.serverState != ServerClientState.AUTH)
+			return;
 		
+		client.gameVersion = stream.readTWString(SanitizeType.SANITIZE_CC);
+		
+		if(!client.gameVersion.startsWith(client.getServer().getNetworkVersion())){
+			this.client.kick(Message.KICK_WRONG_VERSION.msg
+					.replace("%1", client.getServer().getNetworkVersion())
+					.replace("%2", client.gameVersion), KickCauseType.SERVER);
+			return;
+		}
+		
+		final String password = stream.readTWString(SanitizeType.SANITIZE_CC);
+		
+		if(client.getServer().isPasswordEnabled() && !client.getServer().getPassword().equals(password)){
+			this.client.kick(Message.KICK_WRONG_PASSWORD.msg, KickCauseType.SERVER);
+			return;
+		}
+		
+		client.serverState = ServerClientState.CONNECTING;
+		
+		sendMap();
 	}
 
 	@Override
@@ -156,5 +182,16 @@ public class ClientHandler implements PacketHandler {
 		default:
 			break;
 		}
+	}
+	
+	public void sendMap(){
+		final BufferedWriteStream stream = new BufferedWriteStream();
+		
+		stream.writeTWInt(PacketHandler.MSG_SV_MAP_CHANGE);
+		stream.writeTWString(client.getServer().getMap().getName());
+		stream.writeTWInt((int) client.getServer().getMap().getChecksum());
+		stream.writeTWInt(client.getServer().getMap().getSize());
+		
+		this.client.sendMsgEx(stream, new PacketSendFlag[]{ PacketSendFlag.VITAL, PacketSendFlag.FLUSH }, true);
 	}
 }

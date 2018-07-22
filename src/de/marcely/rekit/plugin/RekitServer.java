@@ -15,6 +15,10 @@ public interface RekitServer {
 	
 	public String getGameVersion();
 	
+	public String getNetworkVersion();
+	
+	public String getSoftwareVersion();
+	
 	public String getServerBrowseName();
 	
 	public void setServerBrowseName(String browseName);

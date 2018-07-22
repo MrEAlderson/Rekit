@@ -4,17 +4,18 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
-import java.util.Queue;
 
-import de.marcely.rekit.KickReason;
-import de.marcely.rekit.KickReason.KickReasonType;
+import de.marcely.rekit.Message;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunk;
 import de.marcely.rekit.network.packet.chunk.PacketChunkFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunkHeader;
 import de.marcely.rekit.network.packet.chunk.PacketChunkResend;
+import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
+import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.util.BufferedReadStream;
+import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
 import lombok.Setter;
@@ -31,15 +32,21 @@ public class Client {
 	@Getter private final short id;
 	@Getter private final ClientHandler handler;
 	
-	@Setter private ClientState state = ClientState.DISCONNECTED;
+	// stuff for the protocol
+	public ClientState state = ClientState.DISCONNECTED;
 	@Getter @Setter private long lastReceivedPacket = System.currentTimeMillis();
 	@Getter private final long loginDate = System.currentTimeMillis();
 	private long lastKeepAlive = System.currentTimeMillis();
-	private Queue<PacketChunkResend> resendQueue = new ArrayDeque<>();
+	private ArrayDeque<PacketChunkResend> resendQueue = new ArrayDeque<>();
 	private Packet resendPacket = new Packet();
 	private int bufferSize = 0;
 	public int ack = 0;
 	private int sequence = 0;
+	
+	// stuff when protocol was successful and now joining
+	public ServerClientState serverState = ServerClientState.NONE;
+	public String gameVersion;
+	
 	
 	public Client(Server server, InetSocketAddress address, short id){
 		this.server = server;
@@ -63,11 +70,15 @@ public class Client {
 		return this.state;
 	}
 	
-	public boolean kick(KickReason reason){
+	public boolean kick(KickCauseType cause){
+		return kick("", cause); 
+	}
+	
+	public boolean kick(String message, KickCauseType cause){
 		if(!close())
 			return false;
 		
-		server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CLOSE, reason.getMessage());
+		server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CLOSE, message);
 		
 		return true;
 	}
@@ -76,7 +87,7 @@ public class Client {
 		if(!isConnected())
 			return false;
 		
-		setState(ClientState.DISCONNECTED);
+		this.state = ClientState.DISCONNECTED;
 		
 		this.server.protocol.clients.remove(this.id);
 		this.server.protocol.clients2.remove(getIdentifier());
@@ -93,7 +104,7 @@ public class Client {
 	public void tick(){
 		// check timeout
 		if(System.currentTimeMillis() - lastReceivedPacket >= TIMEOUT){
-			kick(new KickReason(KickReasonType.WEAK_CONNECTION_TIMEOUT));
+			kick(Message.KICK_WEAK_CONNECTION_TIMEOUT.msg, KickCauseType.NETWORK);
 			return;
 		}
 		
@@ -102,8 +113,8 @@ public class Client {
 			final PacketChunkResend packet = resendQueue.peek();
 			
 			if(System.currentTimeMillis() - packet.firstSendTime > TIMEOUT)
-				kick(new KickReason(KickReasonType.WEAK_CONNECTION_ACK));
-			else
+				kick(Message.KICK_WEAK_CONNECTION_ACK.msg, KickCauseType.NETWORK);
+			else if(System.currentTimeMillis() - packet.lastSendTime > 1000)
 				resendChunk(packet);
 		}
 		
@@ -111,8 +122,6 @@ public class Client {
 		if(System.currentTimeMillis() - lastKeepAlive >= KEEP_ALIVE_TIME){
 			switch(state){
 			case ONLINE:
-			case ONLINE_AUTH:
-			case ONLINE_CONNECTING:
 				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_KEEP_ALIVE, "");
 				break;
 				
@@ -150,13 +159,13 @@ public class Client {
 				if(packet.data.length >= 2)
 					reason = new String(Util.arraycopy(packet.data, 1, packet.data.length), StandardCharsets.UTF_8);
 				
-				kick(new KickReason(reason));
+				kick(reason, KickCauseType.PLAYER);
 				break;
 				
 			case ProtocolHandler.PACKET_TYPE_CONNECT:
 				if(getState() != ClientState.DISCONNECTED) return;
 				
-				setState(ClientState.PENDING);
+				this.state = ClientState.PENDING;
 				
 				this.server.protocol.sendControlPacket(getAddress().getAddress(), getAddress().getPort(), 0,
 						ProtocolHandler.PACKET_TYPE_CONNECT_ACCEPT, "");
@@ -165,17 +174,20 @@ public class Client {
 			case ProtocolHandler.PACKET_TYPE_CONNECT_ACCEPT:
 				if(getState() != ClientState.CONNECT) return;
 				
-				setState(ClientState.ONLINE);
+				this.state = ClientState.ONLINE;
+				this.serverState = ServerClientState.AUTH;
 				
 				this.server.protocol.sendControlPacket(getAddress().getAddress(), getAddress().getPort(), 0,
 						ProtocolHandler.PACKET_TYPE_ACCEPT, "");
 				break;
 			}
 		
-		}else if(getState() == ClientState.PENDING)
-			setState(ClientState.ONLINE);
+		}else if(getState() == ClientState.PENDING){
+			this.state = ClientState.ONLINE;
+			this.serverState = ServerClientState.AUTH;
+		}
 		
-		if(getState().isOnline()){
+		if(getState() == ClientState.ONLINE){
 			setLastReceivedPacket(System.currentTimeMillis());
 			ackChunks(packet.ack);
 		}
@@ -194,8 +206,6 @@ public class Client {
 	}
 	
 	private void handleConnectedPacketStream(BufferedReadStream stream) throws Exception {
-		// stream.read(10);
-		
 		final int header = stream.readTWInt();
 		final boolean isSystem = (header&1) != 0;
 		final int type = header >> 1;
@@ -248,20 +258,53 @@ public class Client {
 	}
 	
 	private void resendChunk(PacketChunkResend chunk){
-		queueChunkEx(Util.concat(new PacketChunkFlag[]{ PacketChunkFlag.RESEND }, chunk.flags), chunk.data, chunk.sequence);
+		queueChunkEx(PacketChunkFlag.concat(new PacketChunkFlag[]{ PacketChunkFlag.RESEND }, chunk.flags), chunk.data, chunk.sequence);
 		chunk.lastSendTime = System.currentTimeMillis();
 	}
 	
-	private void ackChunks(int ack){
+	/*private void ackChunks(int ack){
+		final Iterator<PacketChunkResend>
+		
 		for(PacketChunkResend packet:this.resendQueue){
 			if(ProtocolHandler.isSequenceInBackroom(packet.sequence, ack)){
 				this.resendQueue.remove(packet);
+				this.bufferSize -= NETWORK_CHUNK_RESEND_SIZE + packet.data.length;
+			}else
 				return;
-			}
+		}
+	}*/
+	
+	private void ackChunks(int ack){
+		final PacketChunkResend first = this.resendQueue.peek();
+		final boolean once = this.resendQueue.size() == 1;
+		PacketChunkResend current = this.resendQueue.pollLast();
+		
+		System.out.println(ack + " B");
+		
+		while(true){
+		    if(current == null)
+		        break;
+		    else if(current.equals(first) && !once){
+		    	this.resendQueue.add(current);
+		    	return;
+		    }
+		    
+		    System.out.println(current.sequence + " A");
+		    
+		    if(!ProtocolHandler.isSequenceInBackroom(current.sequence, ack)){
+		        this.resendQueue.add(current);
+		        return;
+		    }else
+		    	this.bufferSize -= NETWORK_CHUNK_RESEND_SIZE + current.data.length;
+		    
+		    if(once)
+		    	return;
+		    
+		    current = this.resendQueue.pollLast();
 		}
 	}
 	
-	private void queueChunkEx(PacketChunkFlag[] flags, byte[] data, int sequence){
+	private boolean queueChunkEx(PacketChunkFlag[] flags, byte[] data, int sequence){
 		if(resendPacket.stream.size() + data.length + ProtocolHandler.PACKET_HEADER_SIZE > ProtocolHandler.PACKET_MAX_PAYLOAD)
 			flush();
 		
@@ -277,26 +320,31 @@ public class Client {
 				this.bufferSize += NETWORK_CHUNK_RESEND_SIZE + data.length;
 				
 				if(this.bufferSize >= MAX_BUFFER_SIZE){
-					kick(new KickReason(KickReasonType.WEAK_CONNECTION_OUT_OF_BUFFER));
-					return;
+					kick(Message.KICK_WEAK_CONNECTION_OUT_OF_BUFFER.msg, KickCauseType.NETWORK);
+					return false;
 				}
 				
 				this.resendQueue.add(new PacketChunkResend(sequence, flags, data, System.currentTimeMillis(), System.currentTimeMillis()));
 			}
 		}catch(IOException e){
 			e.printStackTrace();
+			return false;
 		}
+		
+		return true;
 	}
 	
-	public void queueChunk(PacketChunkFlag[] flags, byte[] data){
+	public boolean queueChunk(PacketChunkFlag[] flags, byte[] data){
 		if(PacketChunkFlag.has(flags, PacketChunkFlag.VITAL))
 			this.sequence = (this.sequence+1) % ProtocolHandler.PACKET_MAX_SEQUENCE;
 		
-		queueChunkEx(flags, data, this.sequence);
+		return queueChunkEx(flags, data, this.sequence);
 	}
 	
-	private void flush(){
-		if(this.resendQueue.size() == 0 && this.resendPacket.flagsMask == 0x00)
+	public void flush(){
+		System.out.println(this.resendPacket.chunksAmount + " " + this.resendPacket.flagsMask + " " + this.resendPacket.stream.toByteArray().length);
+		
+		if(this.resendPacket.chunksAmount == 0 && this.resendPacket.flagsMask == 0x00)
 			return;
 		
 		this.resendPacket.data = this.resendPacket.stream.toByteArray();
@@ -313,5 +361,20 @@ public class Client {
 	
 	public void sendPacket(Packet packet){
 		this.server.protocol.sendPacket(packet, this.address.getAddress(), this.address.getPort());
+	}
+	
+	public void sendMsgEx(BufferedWriteStream stream, PacketSendFlag[] flags, boolean isSystem){
+		final PacketChunk packet = new PacketChunk(flags, stream.toByteArray());
+		
+		packet.buffer[0] <<= 1;
+		
+		if(isSystem)
+			packet.buffer[0] |= 1;
+		
+		send(packet);
+	}
+	
+	public void send(PacketChunk packet){
+		this.server.protocol.send(packet, address.getAddress(), address.getPort(), this);
 	}
 }

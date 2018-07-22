@@ -11,7 +11,7 @@ import de.marcely.rekit.util.Util;
 
 public class PacketChunk {
 	
-	public final PacketSendFlag[] flags;
+	public PacketSendFlag[] flags;
 	public byte[] buffer;
 	
 	public PacketChunk(PacketSendFlag[] flags, byte[] buffer){
@@ -33,19 +33,23 @@ public class PacketChunk {
 			offset = header.newOffset;
 			
 			if(client != null && PacketChunkFlag.has(header.flags, PacketChunkFlag.VITAL)){
+				System.out.println("asd" + (client.ack+1) % ProtocolHandler.PACKET_MAX_SEQUENCE);
+				
 				if(header.sequence == (client.ack+1) % ProtocolHandler.PACKET_MAX_SEQUENCE)
 					client.ack = (client.ack+1) % ProtocolHandler.PACKET_MAX_SEQUENCE;
 				else{
-					if(ProtocolHandler.isSequenceInBackroom(header.sequence, client.ack))
+					if(ProtocolHandler.isSequenceInBackroom(header.sequence, client.ack)){
+						offset += header.size;
 						continue;
+					}
 					
 					client.signalResend();
 				}
 			}
 			
-			System.out.println(header.size + " " + offset);
+			System.out.println(offset + "-" + (header.size+offset) + "/" + buffer.length);
 			
-			if(header.size+offset+1 >= buffer.length)
+			if(header.size+offset > buffer.length)
 				break;
 			
 			list.add(new PacketChunk(new PacketSendFlag[0], Util.arraycopy(buffer, offset, header.size+offset)));

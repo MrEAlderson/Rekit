@@ -158,4 +158,14 @@ public class Server implements RekitServer {
 	public void disablePassword(){
 		this.password = null;
 	}
+
+	@Override
+	public String getNetworkVersion(){
+		return "0.6";
+	}
+
+	@Override
+	public String getSoftwareVersion(){
+		return "0.6.0";
+	}
 }

@@ -6,13 +6,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.zip.CRC32;
 import java.util.zip.Inflater;
 
 import com.sun.istack.internal.Nullable;
 
 import de.marcely.rekit.logger.Logger;
 import de.marcely.rekit.util.BufferedReadStream;
+import de.marcely.rekit.util.Util;
 
 /**
  * 
@@ -70,7 +70,7 @@ public class MapFile {
 				return null;
 			}
 			
-			final String checksum = Long.toString(calcCRC2(data), 16);
+			final long checksum = Util.calcCRC32(data);
 			/*final long size = */stream.readUnsignedInt();
 			/*final long swapLen = */stream.readUnsignedInt();
 			final long numItemTypes = stream.readUnsignedInt();
@@ -168,7 +168,7 @@ public class MapFile {
 							tiles[ti] = new MapTile(reader);
 						
 						if(layerTile.flags == 1){ // is game layer
-							final TWMap map = new TWMap(file, file.getName().replace("_" + checksum, "").replace(".map", ""), checksum, layerTile.width, layerTile.height);
+							final TWMap map = new TWMap(file, file.getName().replace("_" + checksum, "").replace(".map", ""), checksum, layerTile.width, layerTile.height, data.length);
 							
 							for(int tx=0; tx<layerTile.width; tx++){
 								for(int ty=0; ty<layerTile.height; ty++){
@@ -192,14 +192,6 @@ public class MapFile {
 		LOGGER.error("Failed!!");
 		
 		return null;
-	}
-	
-	private static @Nullable Long calcCRC2(byte[] data){
-		final CRC32 crc = new CRC32();
-		
-		crc.update(data);
-		
-		return crc.getValue();
 	}
 	
 	private static @Nullable byte[] read(File file){

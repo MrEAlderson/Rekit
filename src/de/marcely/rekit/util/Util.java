@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.zip.CRC32;
 
 import com.sun.istack.internal.Nullable;
 
@@ -29,16 +30,6 @@ public class Util {
 	
     public static byte[] concat(byte[] a1, byte[] a2){
     	final byte[] c = new byte[a1.length+a2.length];
-    	
-		System.arraycopy(a1, 0, c, 0, a1.length);
-		System.arraycopy(a2, 0, c, a1.length, a2.length);
-		
-		return c;
-    }
-    
-    public static <T>T[] concat(T[] a1, T[] a2){
-    	@SuppressWarnings("unchecked")
-		final T[] c = (T[]) new Object[a1.length+a2.length];
     	
 		System.arraycopy(a1, 0, c, 0, a1.length);
 		System.arraycopy(a2, 0, c, a1.length, a2.length);
@@ -128,4 +119,12 @@ public class Util {
     	
     	return true;
     }
+    
+	public static @Nullable Long calcCRC32(byte[] data){
+		final CRC32 crc = new CRC32();
+		
+		crc.update(data);
+		
+		return crc.getValue();
+	}
 }

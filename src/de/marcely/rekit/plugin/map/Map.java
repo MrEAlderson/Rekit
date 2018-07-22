@@ -8,11 +8,13 @@ public interface Map {
 	
 	public String getName();
 	
-	public byte[] getChecksum();
+	public long getChecksum();
 	
 	public int getWidth();
 	
 	public int getHeight();
 	
 	public byte getGameIndexAt(int x, int y);
+	
+	public int getSize();
 }

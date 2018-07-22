@@ -7,17 +7,20 @@ import de.marcely.rekit.plugin.map.Map;
 public class TWMap implements Map {
 	
 	public final File file;
-	public final String name, checksum;
+	public final String name;
+	public final long checksum;
 	public final Tile[][] tiles;
 	public final int width, height;
+	public final int size;
 	
-	public TWMap(File file, String name, String checksum, int width, int height){
+	public TWMap(File file, String name, long checksum, int width, int height, int size){
 		this.file = file;
 		this.name = name;
 		this.checksum = checksum;
 		this.width = width;
 		this.height = height;
 		this.tiles = new Tile[width][height];
+		this.size = size;
 	}
 
 	@Override
@@ -31,8 +34,8 @@ public class TWMap implements Map {
 	}
 
 	@Override
-	public byte[] getChecksum(){
-		return this.checksum.getBytes();
+	public long getChecksum(){
+		return this.checksum;
 	}
 
 	@Override
@@ -48,5 +51,10 @@ public class TWMap implements Map {
 	@Override
 	public byte getGameIndexAt(int x, int y){
 		return (byte) this.tiles[x][y].index;
+	}
+
+	@Override
+	public int getSize(){
+		return this.size;
 	}
 }

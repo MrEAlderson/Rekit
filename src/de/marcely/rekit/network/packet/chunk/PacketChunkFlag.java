@@ -44,4 +44,8 @@ public enum PacketChunkFlag {
 		
 		return flags.toArray(new PacketChunkFlag[flags.size()]);
 	}
+	
+	public static PacketChunkFlag[] concat(PacketChunkFlag[] a1, PacketChunkFlag[] a2){
+		return ofBitMask((byte) (toBitMask(a1) | toBitMask(a2)));
+	}
 }
