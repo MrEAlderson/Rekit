@@ -1,8 +1,11 @@
 package de.marcely.rekit.network.server;
 
+import java.awt.Color;
+
 import de.marcely.rekit.Message;
 import de.marcely.rekit.network.packet.DataPacket;
-import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
+import de.marcely.rekit.network.packet.PacketSendFlag;
+import de.marcely.rekit.network.packet.PacketType;
 import de.marcely.rekit.network.packet.game.PacketGameClientCallVote;
 import de.marcely.rekit.network.packet.game.PacketGameClientChangeInfo;
 import de.marcely.rekit.network.packet.game.PacketGameClientEmoticon;
@@ -13,6 +16,8 @@ import de.marcely.rekit.network.packet.game.PacketGameClientSetSpectatorMode;
 import de.marcely.rekit.network.packet.game.PacketGameClientSetTeam;
 import de.marcely.rekit.network.packet.game.PacketGameClientStartInfo;
 import de.marcely.rekit.network.packet.game.PacketGameClientVote;
+import de.marcely.rekit.network.packet.game.PacketGameServerReadyToEnter;
+import de.marcely.rekit.network.packet.game.PacketGameServerTuneParams;
 import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.util.BufferedReadStream;
 import de.marcely.rekit.util.BufferedWriteStream;
@@ -59,12 +64,26 @@ public class ClientHandler implements PacketHandler {
 
 	@Override
 	public void handleMsgReady(BufferedReadStream stream){
+		if(this.client.serverState != ServerClientState.CONNECTING)
+			return;
 		
+		this.client.serverState = ServerClientState.READY;
+		
+		final BufferedWriteStream outStream = new BufferedWriteStream();
+		
+		outStream.writeTWInt(PacketHandler.MSG_SV_CON_READY);
+		
+		this.client.sendMsgEx(outStream, true, PacketSendFlag.VITAL, PacketSendFlag.FLUSH);
 	}
 
 	@Override
 	public void handleMsgEnterGame(BufferedReadStream stream){
+		if(this.client.serverState != ServerClientState.READY)
+			return;
 		
+		System.out.println("Player with the ID " + client.getId() + " entered the game");
+		
+		this.client.serverState = ServerClientState.IN_GAME;
 	}
 
 	@Override
@@ -129,7 +148,17 @@ public class ClientHandler implements PacketHandler {
 
 	@Override
 	public void handleData(PacketGameClientStartInfo packet){
+		this.client.gameLastChangedInfo = System.currentTimeMillis();
+		this.client.gameName = packet.name;
+		this.client.gameClan = packet.clan;
+		this.client.gameCountry = packet.country;
+		this.client.gameSkinName = packet.skin;
+		this.client.gameHasCustomColor = packet.hasCustomColor;
+		this.client.gameBodyColor = new Color(packet.bodyColor);
+		this.client.gameFeetColor = new Color(packet.feetColor);
 		
+		sendTunings();
+		this.client.sendDataPacket(new PacketGameServerReadyToEnter(), PacketSendFlag.VITAL, PacketSendFlag.FLUSH);
 	}
 
 	@Override
@@ -138,6 +167,9 @@ public class ClientHandler implements PacketHandler {
 	}
 	
 	public void handleData(DataPacket packet){
+		if(client.serverState == ServerClientState.READY && packet.getType() != PacketType.GAME_CL_START_INFO)
+			return;
+		
 		switch(packet.getType()){
 		case GAME_CL_SAY:
 			handleData((PacketGameClientSay) packet);
@@ -192,6 +224,14 @@ public class ClientHandler implements PacketHandler {
 		stream.writeTWInt((int) client.getServer().getMap().getChecksum());
 		stream.writeTWInt(client.getServer().getMap().getSize());
 		
-		this.client.sendMsgEx(stream, new PacketSendFlag[]{ PacketSendFlag.VITAL, PacketSendFlag.FLUSH }, true);
+		this.client.sendMsgEx(stream, true, PacketSendFlag.VITAL, PacketSendFlag.FLUSH);
+	}
+	
+	public void sendTunings(){
+		final PacketGameServerTuneParams packet = new PacketGameServerTuneParams();
+		
+		packet.values = this.client.getServer().getTuningParameterValues();
+		
+		this.client.sendDataPacket(packet, PacketSendFlag.VITAL);
 	}
 }

@@ -1,4 +1,4 @@
-package de.marcely.rekit.network.packet.chunk;
+package de.marcely.rekit.network.packet;
 
 import java.util.ArrayList;
 import java.util.List;

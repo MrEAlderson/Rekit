@@ -1,5 +1,6 @@
 package de.marcely.rekit.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -123,6 +124,9 @@ public class BufferedWriteStream extends OutputStream {
 	
 	public byte[] toByteArray(){
 		if(stream != null){
+			if(stream instanceof ByteArrayOutputStream)
+				return ((ByteArrayOutputStream) stream).toByteArray();
+			
 			new NullPointerException("Streaming is enabled").printStackTrace();
 			return null;
 		}

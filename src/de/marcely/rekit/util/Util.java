@@ -5,6 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.zip.CRC32;
@@ -126,5 +128,67 @@ public class Util {
 		crc.update(data);
 		
 		return crc.getValue();
+	}
+	
+	public static String intsToString(int[] ints){
+		final byte[] bytes = new byte[ints.length*4];
+		int size = 0;
+		
+        for(int i=0; i<ints.length; i++){
+            bytes[i * 4 + 0] = (byte) (((ints[i] >> 24) & 0b1111_1111) - 128);
+            if(bytes[i * 4 + 0] < 32) return getString(bytes, size, StandardCharsets.UTF_8);
+            size++;
+
+            bytes[i * 4 + 1] = (byte) (((ints[i] >> 16) & 0b1111_1111) - 128);
+            if (bytes[i * 4 + 1] < 32) return getString(bytes, size, StandardCharsets.UTF_8);
+            size++;
+
+            bytes[i * 4 + 2] = (byte) (((ints[i] >> 8) & 0b1111_1111) - 128);
+            if (bytes[i * 4 + 2] < 32) return getString(bytes, size, StandardCharsets.UTF_8);
+            size++;
+
+            bytes[i * 4 + 3] = (byte) ((ints[i] & 0b1111_1111) - 128);
+            if (bytes[i * 4 + 3] < 32) return getString(bytes, size, StandardCharsets.UTF_8);
+            size++;
+        }
+        
+        return getString(bytes, size, StandardCharsets.UTF_8);
+	}
+	
+	public static String getString(byte[] bytes, int size, Charset charset){
+		String str = new String(bytes, charset);
+		
+		if(str.length() > size)
+			str = str.substring(size);
+		
+		return str;
+	}
+	
+	public static int[] stringToInts(String input, int size){
+		final int[] ints = new int[size];
+		byte[] bytes = new byte[0];
+		int index = 0;
+		
+		if(input != null && !input.isEmpty())
+			bytes = input.getBytes(StandardCharsets.UTF_8);
+		
+		for(int i=0; i<size; i++){
+			final int[] buffer = new int[4];
+			
+			for(int c=0; c<buffer.length && index < bytes.length; c++, index++){
+				buffer[c] = bytes[index] >= 128 ?
+						bytes[index] - 256 :
+						bytes[index];
+			}
+			
+            ints[i] = ((buffer[0] + 128) << 24) | 
+                    ((buffer[1] + 128) << 16) | 
+                    ((buffer[2] + 128) << 0x08) | 
+                    ((buffer[3] + 128) << 00);
+		}
+		
+		ints[ints.length - 1] = (int) (ints[ints.length - 1] & 0xFFFFFF00);
+		
+		return ints;
 	}
 }

@@ -35,6 +35,13 @@ public interface RekitServer {
 	
 	public void disablePassword();
 	
+	public float getTuningParameterValue(TuningParameter param);
+	
+	public void setTuningParameterValue(TuningParameter param, float value);
+	
+	public float[] getTuningParameterValues();
+	
+	public World getWorld();
 	
 	public static RekitServer getServer(){
 		return Main.SERVER;

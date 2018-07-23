@@ -25,9 +25,9 @@ import de.marcely.rekit.network.UDPSocket;
 import de.marcely.rekit.network.master.MasterServerPackets;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
+import de.marcely.rekit.network.packet.PacketSendFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunk;
 import de.marcely.rekit.network.packet.chunk.PacketChunkFlag;
-import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
 import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.Util;
@@ -274,6 +274,11 @@ public class ProtocolHandler {
 	}*/
 	
 	public void sendControlPacket(InetAddress address, int port, int ack, byte type, String extra){
+		final Client client = getClient(address, port);
+		
+		if(client != null)
+			client.lastSendPacket = System.currentTimeMillis();
+		
 		final byte[] extraRaw = extra.getBytes(StandardCharsets.UTF_8);
 		final byte[] buffer = new byte[extraRaw.length+1];
 		
@@ -282,31 +287,10 @@ public class ProtocolHandler {
 		
 		sendPacket(address,
 				port,
-				new PacketFlag[]{ PacketFlag.CONTROL },
+				PacketFlag.CONTROL.getMask(),
 				ack,
 				(byte) 1,
 				buffer);
-	}
-	
-	private void sendPacket(InetAddress address, int port, PacketFlag[] flags, int ack, byte chunksAmount, byte[] data){
-		if(PacketFlag.has(flags, PacketFlag.COMPRESSION)){
-			try{
-				data = Util.huffmanCompress(data);
-			}catch(IOException e){
-				e.printStackTrace();
-				return;
-			}
-		}
-		
-		final byte[] buffer = new byte[PACKET_HEADER_SIZE+data.length];
-		
-		buffer[0] = (byte) ((((int) PacketFlag.toBitMask(flags) << 4) & 0xF0) | ((ack >> 8) & 0xF));
-		buffer[1] = (byte) (ack & 0xFF);
-		buffer[2] = chunksAmount;
-		
-		System.arraycopy(data, 0, buffer, PACKET_HEADER_SIZE, data.length);
-		
-		this.socket.sendRawPacket(address, port, buffer);
 	}
 	
 	private void handleUnconnectedPacket(PacketChunk packet, InetAddress address, int port){
@@ -492,22 +476,33 @@ public class ProtocolHandler {
     }
     
     public void sendPacket(Packet packet, InetAddress address, int port){
-    	byte[] compressedData = null;
-    	final byte[] header = new byte[PACKET_HEADER_SIZE];
-    	
-    	System.out.println(Util.bytesToHex(packet.data));
-    	
-    	try{
-			compressedData = Util.huffmanCompress(packet.data);
+    	sendPacket(address, port, packet.flagsMask, packet.ack, (byte) packet.chunksAmount, packet.data);
+    }
+    
+	private void sendPacket(InetAddress address, int port, byte flagsMask, int ack, byte chunksAmount, byte[] data){
+		final byte[] buffer = new byte[PACKET_MAX_SIZE];
+		byte[] compressed = null;
+		
+		try{
+			compressed = Util.huffmanCompress(data);
 		}catch(IOException e){
 			e.printStackTrace();
 			return;
 		}
-    	
-        header[0] = (byte) ((((int) (packet.flagsMask | PacketFlag.COMPRESSION.getMask()) << 4) & 0xF0) | ((packet.ack >> 8) & 0xF));
-        header[1] = (byte) (packet.ack & 0xFF);
-        header[2] = (byte) packet.chunksAmount;
-        
-        this.socket.sendRawPacket(address, port, Util.concat(header, compressedData));
-    }
+		
+		if(compressed.length > 0 && compressed.length < data.length){
+			System.arraycopy(compressed, 0, buffer, PACKET_HEADER_SIZE, compressed.length);
+			flagsMask |= PacketFlag.COMPRESSION.getMask();
+		
+		}else{
+			System.arraycopy(data, 0, buffer, PACKET_HEADER_SIZE, data.length);
+			flagsMask &= ~PacketFlag.COMPRESSION.getMask();
+		}
+		
+		buffer[0] = (byte) ((((int) flagsMask << 4) & 0xF0) | ((ack >> 8) & 0xF));
+		buffer[1] = (byte) (ack & 0xFF);
+		buffer[2] = chunksAmount;
+		
+		this.socket.sendRawPacket(address, port, buffer);
+	}
 }

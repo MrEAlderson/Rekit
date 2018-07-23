@@ -1,24 +1,29 @@
 package de.marcely.rekit.network.server;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 
 import de.marcely.rekit.Message;
+import de.marcely.rekit.network.packet.DataPacket;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
+import de.marcely.rekit.network.packet.PacketInputStream;
+import de.marcely.rekit.network.packet.PacketOutputStream;
+import de.marcely.rekit.network.packet.PacketSendFlag;
+import de.marcely.rekit.network.packet.PacketType;
 import de.marcely.rekit.network.packet.chunk.PacketChunk;
 import de.marcely.rekit.network.packet.chunk.PacketChunkFlag;
 import de.marcely.rekit.network.packet.chunk.PacketChunkHeader;
 import de.marcely.rekit.network.packet.chunk.PacketChunkResend;
-import de.marcely.rekit.network.packet.chunk.PacketSendFlag;
 import de.marcely.rekit.plugin.player.KickCauseType;
+import de.marcely.rekit.snapshot.SnapshotRate;
 import de.marcely.rekit.util.BufferedReadStream;
 import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
-import lombok.Setter;
 
 public class Client {
 	
@@ -34,19 +39,27 @@ public class Client {
 	
 	// stuff for the protocol
 	public ClientState state = ClientState.DISCONNECTED;
-	@Getter @Setter private long lastReceivedPacket = System.currentTimeMillis();
+	public long lastReceivedPacket = System.currentTimeMillis();
+	public long lastSendPacket;
 	@Getter private final long loginDate = System.currentTimeMillis();
-	private long lastKeepAlive = System.currentTimeMillis();
 	private ArrayDeque<PacketChunkResend> resendQueue = new ArrayDeque<>();
 	private Packet resendPacket = new Packet();
 	private int bufferSize = 0;
 	public int ack = 0;
 	private int sequence = 0;
 	
-	// stuff when protocol was successful and now joining
+	// stuff when ingame
+	private SnapshotRate snapRate = SnapshotRate.INIT;
+	
 	public ServerClientState serverState = ServerClientState.NONE;
 	public String gameVersion;
-	
+	public long gameLastChangedInfo;
+	public String gameName;
+	public String gameClan;
+	public int gameCountry;
+	public String gameSkinName;
+	public boolean gameHasCustomColor;
+	public Color gameBodyColor, gameFeetColor;
 	
 	public Client(Server server, InetSocketAddress address, short id){
 		this.server = server;
@@ -78,7 +91,7 @@ public class Client {
 		if(!close())
 			return false;
 		
-		server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CLOSE, message);
+		server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), this.ack, ProtocolHandler.PACKET_TYPE_CLOSE, message);
 		
 		return true;
 	}
@@ -118,26 +131,29 @@ public class Client {
 				resendChunk(packet);
 		}
 		
+		// flush
+		if(state == ClientState.ONLINE &&
+		   System.currentTimeMillis() - lastSendPacket >= KEEP_ALIVE_TIME / 2)
+			flush();
+		
 		// send keep alive
-		if(System.currentTimeMillis() - lastKeepAlive >= KEEP_ALIVE_TIME){
+		if(System.currentTimeMillis() - lastSendPacket >= KEEP_ALIVE_TIME){
 			switch(state){
 			case ONLINE:
-				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_KEEP_ALIVE, "");
+				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), this.ack, ProtocolHandler.PACKET_TYPE_KEEP_ALIVE, "");
 				break;
 				
 			case CONNECT:
-				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CONNECT, "");
+				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), this.ack, ProtocolHandler.PACKET_TYPE_CONNECT, "");
 				break;
 				
 			case PENDING:
-				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), 0, ProtocolHandler.PACKET_TYPE_CONNECT_ACCEPT, "");
+				server.protocol.sendControlPacket(this.address.getAddress(), this.address.getPort(), this.ack, ProtocolHandler.PACKET_TYPE_CONNECT_ACCEPT, "");
 				break;
 				
 			default:
 				break;
 			}
-			
-			lastKeepAlive = System.currentTimeMillis();
 		}
 	}
 	
@@ -167,7 +183,7 @@ public class Client {
 				
 				this.state = ClientState.PENDING;
 				
-				this.server.protocol.sendControlPacket(getAddress().getAddress(), getAddress().getPort(), 0,
+				this.server.protocol.sendControlPacket(getAddress().getAddress(), getAddress().getPort(), this.ack,
 						ProtocolHandler.PACKET_TYPE_CONNECT_ACCEPT, "");
 				break;
 				
@@ -177,7 +193,7 @@ public class Client {
 				this.state = ClientState.ONLINE;
 				this.serverState = ServerClientState.AUTH;
 				
-				this.server.protocol.sendControlPacket(getAddress().getAddress(), getAddress().getPort(), 0,
+				this.server.protocol.sendControlPacket(getAddress().getAddress(), getAddress().getPort(), this.ack,
 						ProtocolHandler.PACKET_TYPE_ACCEPT, "");
 				break;
 			}
@@ -188,7 +204,7 @@ public class Client {
 		}
 		
 		if(getState() == ClientState.ONLINE){
-			setLastReceivedPacket(System.currentTimeMillis());
+			this.lastReceivedPacket = System.currentTimeMillis();
 			ackChunks(packet.ack);
 		}
 	}
@@ -247,8 +263,24 @@ public class Client {
 				break;
 			}
 		
-		}else{
+		}else if(this.serverState == ServerClientState.READY ||
+			     this.serverState == ServerClientState.IN_GAME){
 			
+			final PacketType pType = PacketType.ofID(type);
+			
+			if(pType != null){
+				final DataPacket packet = pType.newClientDataPacketInstance();
+				
+				if(packet != null){
+					try{
+						packet.read(new PacketInputStream(stream.read(stream.available())));
+						
+						handler.handleData(packet);
+					}catch(Exception e){
+						e.printStackTrace();
+					}
+				}
+			}
 		}
 	}
 	
@@ -279,8 +311,6 @@ public class Client {
 		final boolean once = this.resendQueue.size() == 1;
 		PacketChunkResend current = this.resendQueue.pollLast();
 		
-		System.out.println(ack + " B");
-		
 		while(true){
 		    if(current == null)
 		        break;
@@ -288,8 +318,6 @@ public class Client {
 		    	this.resendQueue.add(current);
 		    	return;
 		    }
-		    
-		    System.out.println(current.sequence + " A");
 		    
 		    if(!ProtocolHandler.isSequenceInBackroom(current.sequence, ack)){
 		        this.resendQueue.add(current);
@@ -342,8 +370,6 @@ public class Client {
 	}
 	
 	public void flush(){
-		System.out.println(this.resendPacket.chunksAmount + " " + this.resendPacket.flagsMask + " " + this.resendPacket.stream.toByteArray().length);
-		
 		if(this.resendPacket.chunksAmount == 0 && this.resendPacket.flagsMask == 0x00)
 			return;
 		
@@ -357,13 +383,14 @@ public class Client {
 		this.resendPacket.data = null;
 		this.resendPacket.flagsMask = 0x00;
 		this.resendPacket.stream.reset();
+		this.lastSendPacket = System.currentTimeMillis();
 	}
 	
 	public void sendPacket(Packet packet){
 		this.server.protocol.sendPacket(packet, this.address.getAddress(), this.address.getPort());
 	}
 	
-	public void sendMsgEx(BufferedWriteStream stream, PacketSendFlag[] flags, boolean isSystem){
+	public void sendMsgEx(BufferedWriteStream stream, boolean isSystem, PacketSendFlag... flags){
 		final PacketChunk packet = new PacketChunk(flags, stream.toByteArray());
 		
 		packet.buffer[0] <<= 1;
@@ -374,7 +401,27 @@ public class Client {
 		send(packet);
 	}
 	
+	public void sendDataPacket(DataPacket packet, PacketSendFlag... flags){
+		final PacketOutputStream stream = new PacketOutputStream();
+		
+		stream.writeInt(packet.getType().id);
+		
+		try{
+			packet.write(stream);
+			sendMsgEx(new BufferedWriteStream(stream), false, flags);
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+	
 	public void send(PacketChunk packet){
 		this.server.protocol.send(packet, address.getAddress(), address.getPort(), this);
+	}
+	
+	public void doSnapshot(){
+		if(this.serverState != ServerClientState.IN_GAME)
+			return;
+		
+		
 	}
 }

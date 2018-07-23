@@ -20,13 +20,13 @@ public class PacketChunkHeader {
 	public void write(OutputStream stream) throws IOException {
 		final byte[] buffer = new byte[PacketChunkFlag.has(flags, PacketChunkFlag.VITAL) ? 3 : 2];
 		
-        buffer[0] = (byte) ((((int) PacketChunkFlag.toBitMask(this.flags) & 0b11) << 6) |
-        		((this.size >> 4) & 0b111111));
+        buffer[0] = (byte) ((((int) PacketChunkFlag.toBitMask(this.flags) & 3) << 6) |
+        		((this.size >> 4) & 0x3F));
         buffer[1] = (byte) (this.size & 0xF);
-
+        
         if(buffer.length == 3){
-            buffer[1] |= (byte) ((this.sequence >> 2) & 0b1111_0000);
-            buffer[2] = (byte) (this.sequence & 0b1111_1111);
+            buffer[1] |= (byte) ((this.sequence >> 2) & 0xF0);
+            buffer[2] = (byte) (this.sequence & 0xFF);
         }
         
         stream.write(buffer);
@@ -35,7 +35,7 @@ public class PacketChunkHeader {
 	public static PacketChunkHeader read(byte[] buffer, int offset){
 		final byte header1 = buffer[offset++];
 		final byte header2 = buffer[offset++];
-		final PacketChunkFlag[] flags = PacketChunkFlag.ofBitMask((byte) ((header1 >> 6) & 0b11));
+		final PacketChunkFlag[] flags = PacketChunkFlag.ofBitMask((byte) ((header1 >> 6) & 3));
 		final int size = ((header1 & 0b111111) << 4) | (header2 & 0b1111);
 		int sequence = -1;
 		

@@ -2,11 +2,14 @@ package de.marcely.rekit.network.server;
 
 import java.net.InetAddress;
 
+import de.marcely.rekit.TWWorld;
 import de.marcely.rekit.logger.Logger;
 import de.marcely.rekit.map.TWMap;
 import de.marcely.rekit.network.master.MasterServerCommunication;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.plugin.RekitServer;
+import de.marcely.rekit.plugin.TuningParameter;
+import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.map.Map;
 import lombok.Getter;
 
@@ -25,6 +28,12 @@ public class Server implements RekitServer {
 		this.masterserver = new MasterServerCommunication(this);
 		this.handler = new ServerHandler(this);
 		this.map = map;
+		
+		// init tuning
+		this.tuningParams = new float[TuningParameter.values().length];
+		
+		for(int i=0; i<this.tuningParams.length; i++)
+			this.tuningParams[i] = TuningParameter.values()[i].getDefaultValue();
 	}
 	
 	public int getPort(){ return this.protocol.getSocket().port; }
@@ -65,6 +74,8 @@ public class Server implements RekitServer {
 	private String serverBrowseType = "Rekit";
 	private TWMap map;
 	private String password = null;
+	private float[] tuningParams;
+	private TWWorld world;
 	
 	@Override
 	public void setMaxPlayers(int amount){
@@ -167,5 +178,25 @@ public class Server implements RekitServer {
 	@Override
 	public String getSoftwareVersion(){
 		return "0.6.0";
+	}
+
+	@Override
+	public float getTuningParameterValue(TuningParameter param){
+		return this.tuningParams[param.ordinal()];
+	}
+
+	@Override
+	public void setTuningParameterValue(TuningParameter param, float value){
+		this.tuningParams[param.ordinal()] = value;
+	}
+
+	@Override
+	public float[] getTuningParameterValues(){
+		return this.tuningParams;
+	}
+
+	@Override
+	public World getWorld(){
+		return (World) this.world;
 	}
 }
