@@ -1,6 +1,7 @@
 package de.marcely.rekit.entity;
 
 import de.marcely.rekit.TWWorld;
+import de.marcely.rekit.network.server.Client;
 import de.marcely.rekit.network.server.Server;
 import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.entity.Entity;
@@ -25,7 +26,7 @@ public abstract class TWEntity implements Entity {
 	
 	public abstract void tick();
 	
-	public abstract void doSnapshot();
+	public abstract void doSnapshot(Client client);
 	
 	@Override
 	public Vector2 getPosition(){

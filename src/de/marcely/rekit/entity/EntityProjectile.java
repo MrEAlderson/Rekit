@@ -1,6 +1,7 @@
 package de.marcely.rekit.entity;
 
 import de.marcely.rekit.TWWorld;
+import de.marcely.rekit.network.server.Client;
 import de.marcely.rekit.plugin.entity.EntityType;
 import de.marcely.rekit.plugin.entity.Projectile;
 
@@ -26,7 +27,7 @@ public class EntityProjectile extends TWEntity implements Projectile {
 	}
 
 	@Override
-	public void doSnapshot(){
+	public void doSnapshot(Client client){
 		
 	}
 }

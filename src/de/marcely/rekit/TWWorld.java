@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.marcely.rekit.entity.*;
+import de.marcely.rekit.network.server.Client;
 import de.marcely.rekit.network.server.Server;
 import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.entity.*;
@@ -83,5 +84,10 @@ public class TWWorld implements World {
 	@Override
 	public Server getServer(){
 		return this.server;
+	}
+	
+	public void doSnapshot(Client client){
+		for(Entity entity:this.entities)
+			((TWEntity) entity).doSnapshot(client);
 	}
 }

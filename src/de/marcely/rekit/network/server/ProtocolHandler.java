@@ -8,11 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.sun.istack.internal.Nullable;
 
@@ -56,16 +52,13 @@ public class ProtocolHandler {
 	private final Server server;
 	
 	public List<PacketReceiver> receivers = new ArrayList<PacketReceiver>();
-	private Queue<QueuedPacket> receiveQueue = new ConcurrentLinkedQueue<QueuedPacket>(), sendQueue = new ConcurrentLinkedQueue<QueuedPacket>();
 	private Map<Byte, QueuedPacket> sendQueuedAcks = new HashMap<>();
 	public Map<String, ChunkBuffer> bufferedChunks = new HashMap<>();
 	public java.util.Map<Short, Client> clients = new ConcurrentHashMap<>();
 	public java.util.Map<String, Client> clients2 = new HashMap<>();
 	
-	private Timer scheduler;
-	
 	public ProtocolHandler(int port, Server server){
-		this.socket = new UDPSocket(port);
+		this.socket = new UDPSocket(port, PACKET_MAX_SIZE);
 		this.server = server;
 	}
 	
@@ -84,29 +77,15 @@ public class ProtocolHandler {
 					return;
 				}
 				
-				receiveQueue.add(new QueuedPacket(address, port, buffer));
+				handleQueuedPacket(address, port, buffer);
 			}
 		});
-		
-		if(result){
-			// run scheduler
-			this.scheduler = new Timer();
-			
-			final int schedulerRepeating = 1000/TICKS;
-			
-			this.scheduler.schedule(new TimerTask(){
-				public void run(){
-					tick();
-				}
-			}, schedulerRepeating, schedulerRepeating);
-		}
 		
 		return result;
 	}
 	
-	private void handleQueuedPacket(QueuedPacket rawPacket){
-		Client client = getClient(rawPacket.getAddress(), rawPacket.getPort());
-		byte[] buffer = rawPacket.getBuffer();
+	private void handleQueuedPacket(InetAddress address, int port, byte[] buffer){
+		Client client = getClient(address, port);
 		final PacketFlag[] flags = PacketFlag.ofBitMask((byte) (buffer[0] >> 4));
 		final int ack = ((buffer[0] & 0xF) << 8) | buffer[1];
 		final byte chunksAmount = buffer[2];
@@ -120,7 +99,7 @@ public class ProtocolHandler {
 			handleUnconnectedPacket(new PacketChunk(
 					new PacketSendFlag[]{ PacketSendFlag.CONNLESS },
 					buffer),
-						rawPacket.getAddress(), rawPacket.getPort());
+						address, port);
 		
 		}else{
 			buffer = Util.arraycopy(buffer, PACKET_HEADER_SIZE, buffer.length);
@@ -145,30 +124,30 @@ public class ProtocolHandler {
 				int sameIPsAmount = 0;
 				
 				for(Client c:clients.values()){
-					if(c.getAddress().getAddress().getHostAddress().equals(rawPacket.getAddress().getHostAddress()))
+					if(c.getAddress().getAddress().getHostAddress().equals(address.getHostAddress()))
 						sameIPsAmount++;
 				}
 				
 				if(sameIPsAmount > this.server.getMaxSameIPsAmount()){
-					sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
+					sendControlPacket(address, port, 0,
 							PACKET_TYPE_CLOSE, "Only " + this.server.getMaxSameIPsAmount() + " players with the same IP are allowed");
 					return;
 				}
 				
 				// check if server is full
 				if(this.clients.size() >= this.server.getMaxPlayers()){
-					sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
+					sendControlPacket(address, port, 0,
 							PACKET_TYPE_CLOSE, "This server is full");
 					return;
 				}
 				
 				// login
-				client = new Client(Main.SERVER, new InetSocketAddress(rawPacket.getAddress(), rawPacket.getPort()), getNextBestClientID());
+				client = new Client(Main.SERVER, new InetSocketAddress(address, port), getNextBestClientID());
 				
 				this.clients.put(client.getId(), client);
 				this.clients2.put(client.getIdentifier(), client);
 				
-				sendControlPacket(rawPacket.getAddress(), rawPacket.getPort(), 0,
+				sendControlPacket(address, port, 0,
 						PACKET_TYPE_CONNECT_ACCEPT, "");
 			
 				if(client != null){
@@ -410,16 +389,8 @@ public class ProtocolHandler {
 			client.kick(Message.KICK_ERROR.msg, KickCauseType.SERVER);
 	}
 	
-	private void tick(){
-		// receive
-		QueuedPacket packet = null;
-		
-		while((packet = receiveQueue.poll()) != null)
-			handleQueuedPacket(packet);
-		
-		// send
-		while((packet = sendQueue.poll()) != null)
-			socket.sendRawPacket(packet.getAddress(), packet.getPort(), packet.getBuffer());
+	public void tick() throws Exception {
+		this.socket.update();
 		
 		for(Client client:clients.values())
 			client.tick();
@@ -429,14 +400,7 @@ public class ProtocolHandler {
 		if(!isRunning()) return false;
 		
 		receivers.clear();
-		receiveQueue.clear();
-		sendQueue.clear();
 		sendQueuedAcks.clear();
-		
-		if(scheduler != null){
-			scheduler.cancel();
-			scheduler = null;
-		}
 		
 		return socket.shutdown();
 	}

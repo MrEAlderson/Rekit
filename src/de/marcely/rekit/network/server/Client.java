@@ -20,6 +20,7 @@ import de.marcely.rekit.network.packet.chunk.PacketChunkHeader;
 import de.marcely.rekit.network.packet.chunk.PacketChunkResend;
 import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.snapshot.SnapshotRate;
+import de.marcely.rekit.snapshot.SnapshotStorage;
 import de.marcely.rekit.util.BufferedReadStream;
 import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.Util;
@@ -50,6 +51,7 @@ public class Client {
 	
 	// stuff when ingame
 	private SnapshotRate snapRate = SnapshotRate.INIT;
+	public SnapshotStorage snapStorage = new SnapshotStorage();
 	
 	public ServerClientState serverState = ServerClientState.NONE;
 	public String gameVersion;
@@ -416,12 +418,5 @@ public class Client {
 	
 	public void send(PacketChunk packet){
 		this.server.protocol.send(packet, address.getAddress(), address.getPort(), this);
-	}
-	
-	public void doSnapshot(){
-		if(this.serverState != ServerClientState.IN_GAME)
-			return;
-		
-		
 	}
 }

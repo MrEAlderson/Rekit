@@ -2,11 +2,10 @@ package de.marcely.rekit.network;
 
 import java.io.IOException;
 import java.net.BindException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
-import java.util.Arrays;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
 
 import de.marcely.rekit.util.Util;
 import lombok.Getter;
@@ -14,42 +13,49 @@ import lombok.Getter;
 public class UDPSocket {
 	
 	public final int port;
+	private final int bufferSize;
 	
 	@Getter private boolean running = false;
 	
-	private DatagramSocket socket;
+	private SocketPump pump;
+	private DatagramChannel channel;
+	private ByteBuffer buffer;
 	
-	public UDPSocket(int port){
+	public UDPSocket(int port, int bufferSize){
 		this.port = port;
+		this.bufferSize = bufferSize;
+		this.buffer = ByteBuffer.allocate(this.bufferSize);
+	}
+	
+	public boolean update() throws Exception {
+		if(!running) return false;
+		
+		while(true){
+			final InetSocketAddress address = (InetSocketAddress) channel.receive(buffer);
+			
+			if(address == null) return true;
+			
+			pump.receive(address.getAddress(), address.getPort(), Util.arraycopy(buffer.array(), 0, buffer.position()));
+			buffer.clear();
+		}
 	}
 	
 	public boolean run(SocketPump pump){
 		if(running) return false;
 		running = true;
 		
+		this.pump = pump;
+		
 		try{
-			socket = new DatagramSocket(port);
+			// open channel
+			this.channel = DatagramChannel.open();
 			
-			new Thread(){
-				public void run(){
-					while(running){
-						final byte[] buffer = new byte[1024];
-						final DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-						
-						try{
-							socket.receive(dp);
-							
-							pump.receive(dp.getAddress(), dp.getPort(), Arrays.copyOf(buffer, dp.getLength()));
-						}catch(Exception e){
-							e.printStackTrace();
-						}
-					}
-				}
-			}.start();
+			this.channel.configureBlocking(false);
+			this.channel.bind(new InetSocketAddress(this.port));
 			
 		}catch(BindException e){
 			return false;
-		}catch(SocketException e){
+		}catch(IOException e){
 			e.printStackTrace();
 			
 			return false;
@@ -62,16 +68,19 @@ public class UDPSocket {
 		if(!running) return false;
 		running = false;
 		
-		socket.close();
+		try{
+			this.channel.close();
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+		
 		
 		return true;
 	}
 	
 	public boolean sendRawPacket(InetAddress address, int port, byte[] data){
-		final DatagramPacket sendPacket = new DatagramPacket(data, data.length, address, port);
-		
 		try{
-			socket.send(sendPacket);
+			this.channel.send(ByteBuffer.wrap(data), new InetSocketAddress(address, port));
 		}catch(IOException e){
 			e.printStackTrace();
 			

@@ -41,6 +41,12 @@ public interface RekitServer {
 	
 	public float[] getTuningParameterValues();
 	
+	public int getTicksPerSecond();
+	
+	public int getMaxTicksPerSecond();
+	
+	public long getGameLoopExecutionTime();
+	
 	public World getWorld();
 	
 	public static RekitServer getServer(){

@@ -11,22 +11,40 @@ import de.marcely.rekit.plugin.RekitServer;
 import de.marcely.rekit.plugin.TuningParameter;
 import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.map.Map;
+import de.marcely.rekit.snapshot.Snapshot;
+import de.marcely.rekit.snapshot.SnapshotBuilder;
 import lombok.Getter;
 
 public class Server implements RekitServer {
+	
+	private static final int TICK_SPEED = 50;
 	
 	public final Logger logger;
 	public final ProtocolHandler protocol;
 	public final MasterServerCommunication masterserver;
 	public final ServerHandler handler;
+	private final GameLoop loop;
 	
 	@Getter private boolean running = false;
+	private int tick, tickSpeed = TICK_SPEED;
+	
+	private int maxPlayers = 8;
+	private int maxSameIPsAmount = 2;
+	private String serverBrowseName = "A new Rekit Server";
+	private String serverBrowseType = "Rekit";
+	private TWMap map;
+	private String password = null;
+	private float[] tuningParams;
+	private TWWorld world;
+	
+	private SnapshotBuilder snapBuilder = new SnapshotBuilder();
 	
 	public Server(int port, TWMap map){
 		this.logger = new Logger("Server");
 		this.protocol = new ProtocolHandler(port, this);
 		this.masterserver = new MasterServerCommunication(this);
 		this.handler = new ServerHandler(this);
+		this.loop = new GameLoop(this);
 		this.map = map;
 		
 		// init tuning
@@ -45,8 +63,11 @@ public class Server implements RekitServer {
 		this.logger.info("Starting server with the port " + getPort() + "...");
 		
 		if(protocol.run()){
+			this.logger.info("Started the server.");
+			
 			// this.masterserver.run();
 			this.handler.run();
+			this.loop.run();
 			
 			return true;
 		}else{
@@ -67,15 +88,6 @@ public class Server implements RekitServer {
 	public void sendPacket(InetAddress address, int port, Packet packet){
 		// protocol.sendPacket(address, port, packet);
 	}
-
-	private int maxPlayers = 8;
-	private int maxSameIPsAmount = 2;
-	private String serverBrowseName = "A new Rekit Server";
-	private String serverBrowseType = "Rekit";
-	private TWMap map;
-	private String password = null;
-	private float[] tuningParams;
-	private TWWorld world;
 	
 	@Override
 	public void setMaxPlayers(int amount){
@@ -88,6 +100,32 @@ public class Server implements RekitServer {
 		}
 		
 		this.maxPlayers = amount;
+	}
+	
+	public void doSnapshot(){
+		for(Client client:this.protocol.clients.values()){
+			if(client.serverState != ServerClientState.IN_GAME)
+				continue;
+			
+			this.snapBuilder.startBuild();
+			
+			this.world.doSnapshot(client);
+			this.doControllerSnapshot(client);
+			this.doEventsSnapshot(client);
+			
+			final Snapshot snap = this.snapBuilder.endBuild();
+			final int crc = snap.crc();
+			
+			client.snapStorage.purgeUntil(tick);
+		}
+	}
+	
+	private void doControllerSnapshot(Client client){
+		
+	}
+	
+	private void doEventsSnapshot(Client client){
+		
 	}
 
 	@Override
@@ -193,6 +231,21 @@ public class Server implements RekitServer {
 	@Override
 	public float[] getTuningParameterValues(){
 		return this.tuningParams;
+	}
+	
+	@Override
+	public int getTicksPerSecond(){
+		return this.loop.tps;
+	}
+	
+	@Override
+	public int getMaxTicksPerSecond(){
+		return this.tickSpeed;
+	}
+
+	@Override
+	public long getGameLoopExecutionTime(){
+		return this.loop.execTime;
 	}
 
 	@Override
