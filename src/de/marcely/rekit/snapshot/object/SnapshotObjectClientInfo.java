@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Util;
 
-public class SnapshotObjectClientInfo extends SnapshotObject {
+public class SnapshotObjectClientInfo extends SnapshotObject implements Cloneable  {
 
 	public String name;
 	public String clan;
@@ -67,5 +67,10 @@ public class SnapshotObjectClientInfo extends SnapshotObject {
 		data[offset++] = this.hasCustomColor ? 1 : 0;
 		data[offset++] = this.bodyColor;
 		data[offset++] = this.feetColor;
+	}
+	
+	@Override
+	public SnapshotObjectClientInfo clone(){
+		return (SnapshotObjectClientInfo) super.clone();
 	}
 }

@@ -70,4 +70,32 @@ public class IntCompressor {
         
         return new SimpleEntry<>(offset, value);
 	}
+	
+	public static int compress(int[] inputData, int inputOffset, int inputSize, byte[] outputData, int outputOffset){
+		final int startOutputOffset = outputOffset;
+		
+		for(int i=0; i<inputSize; i++){
+			final byte[] data = pack(inputData[inputOffset++]);
+			
+			System.arraycopy(data, 0, outputData, outputOffset, data.length);
+			
+			outputOffset += data.length;
+		}
+		
+		return outputOffset - startOutputOffset;
+	}
+	
+	final static int decompress(byte[] inputData, int inputOffset, int inputSize, int outputData[], int outputOffset){
+		final int startOutputOffset = outputOffset;
+		final int end = inputOffset + inputSize;
+		
+		while(inputOffset < end){
+			final Entry<Integer, Integer> data = unpack(inputData, inputOffset);
+			
+			inputOffset = data.getKey();
+			outputData[outputOffset++] = data.getValue();
+		}
+		
+		return outputOffset - startOutputOffset;
+	}
 }

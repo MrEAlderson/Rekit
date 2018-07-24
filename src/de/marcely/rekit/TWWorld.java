@@ -6,6 +6,7 @@ import java.util.List;
 import de.marcely.rekit.entity.*;
 import de.marcely.rekit.network.server.Client;
 import de.marcely.rekit.network.server.Server;
+import de.marcely.rekit.plugin.TuningParameter;
 import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.entity.*;
 import de.marcely.rekit.util.Vector2;
@@ -16,9 +17,17 @@ public class TWWorld implements World {
 	
 	private final List<Entity> entities = new ArrayList<>();
 	public final List<Player> players = new ArrayList<>();
+	private final float[] tuningParams;
+	private boolean isPaused;
 	
 	public TWWorld(Server server){
 		this.server = server;
+		
+		// init tuning
+		this.tuningParams = new float[TuningParameter.values().length];
+		
+		for(int i=0; i<this.tuningParams.length; i++)
+			this.tuningParams[i] = TuningParameter.values()[i].getDefaultValue();
 	}
 	
 	@Override
@@ -80,6 +89,21 @@ public class TWWorld implements World {
 	public short getNextAvailableEntityId(){
 		return 0;
 	}
+	
+	@Override
+	public float getTuningParameterValue(TuningParameter param){
+		return this.tuningParams[param.ordinal()];
+	}
+
+	@Override
+	public void setTuningParameterValue(TuningParameter param, float value){
+		this.tuningParams[param.ordinal()] = value;
+	}
+
+	@Override
+	public float[] getTuningParameterValues(){
+		return this.tuningParams;
+	}
 
 	@Override
 	public Server getServer(){
@@ -89,5 +113,10 @@ public class TWWorld implements World {
 	public void doSnapshot(Client client){
 		for(Entity entity:this.entities)
 			((TWEntity) entity).doSnapshot(client);
+	}
+
+	@Override
+	public boolean isPaused(){
+		return this.isPaused;
 	}
 }

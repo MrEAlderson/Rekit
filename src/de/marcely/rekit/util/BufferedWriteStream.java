@@ -49,6 +49,15 @@ public class BufferedWriteStream extends OutputStream {
 	}
 	
 	@Override
+	public void write(byte[] b, int off, int len){
+		try{
+			super.write(b, off, len);
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+	}
+	
+	@Override
 	public void write(byte[] array){
 		try{
 			super.write(array);

@@ -5,7 +5,7 @@ import de.marcely.rekit.snapshot.SnapshotEvent;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotEventSoundWorld extends SnapshotEvent {
+public class SnapshotEventSoundWorld extends SnapshotEvent implements Cloneable {
 	
 	public Sound sound;
 	
@@ -30,5 +30,10 @@ public class SnapshotEventSoundWorld extends SnapshotEvent {
 		data[offset++] = (int) this.pos.getX();
 		data[offset++] = (int) this.pos.getY();
 		data[offset++] = this.sound.getID();
+	}
+	
+	@Override
+	public SnapshotEventSoundWorld clone(){
+		return (SnapshotEventSoundWorld) super.clone();
 	}
 }

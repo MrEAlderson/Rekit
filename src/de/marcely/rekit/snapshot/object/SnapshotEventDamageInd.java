@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotEvent;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotEventDamageInd extends SnapshotEvent {
+public class SnapshotEventDamageInd extends SnapshotEvent implements Cloneable {
 
 	public int angle;
 	
@@ -29,5 +29,10 @@ public class SnapshotEventDamageInd extends SnapshotEvent {
 		data[offset++] = (int) this.pos.getX();
 		data[offset++] = (int) this.pos.getY();
 		data[offset++] = this.angle;
+	}
+	
+	@Override
+	public SnapshotEventDamageInd clone(){
+		return (SnapshotEventDamageInd) super.clone();
 	}
 }

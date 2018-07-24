@@ -35,19 +35,17 @@ public interface RekitServer {
 	
 	public void disablePassword();
 	
-	public float getTuningParameterValue(TuningParameter param);
-	
-	public void setTuningParameterValue(TuningParameter param, float value);
-	
-	public float[] getTuningParameterValues();
-	
 	public int getTicksPerSecond();
 	
 	public int getMaxTicksPerSecond();
 	
+	public int getCurrentTick();
+	
 	public long getGameLoopExecutionTime();
 	
 	public World getWorld();
+	
+	public long getStartTime();
 	
 	public static RekitServer getServer(){
 		return Main.SERVER;

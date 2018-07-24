@@ -4,7 +4,7 @@ import de.marcely.rekit.plugin.player.Team;
 import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 
-public class SnapshotObjectPlayerInfo extends SnapshotObject {
+public class SnapshotObjectPlayerInfo extends SnapshotObject implements Cloneable  {
 	
 	public boolean local;
 	public int clientID;
@@ -38,5 +38,10 @@ public class SnapshotObjectPlayerInfo extends SnapshotObject {
 		data[offset++] = this.team.getID();
 		data[offset++] = this.score;
 		data[offset++] = this.latency;
+	}
+	
+	@Override
+	public SnapshotObjectPlayerInfo clone(){
+		return (SnapshotObjectPlayerInfo) super.clone();
 	}
 }

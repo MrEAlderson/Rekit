@@ -1,18 +1,22 @@
 package de.marcely.rekit.network.server;
 
-import java.net.InetAddress;
+import java.util.Map.Entry;
 
 import de.marcely.rekit.TWWorld;
 import de.marcely.rekit.logger.Logger;
 import de.marcely.rekit.map.TWMap;
 import de.marcely.rekit.network.master.MasterServerCommunication;
-import de.marcely.rekit.network.packet.Packet;
+import de.marcely.rekit.network.packet.PacketSendFlag;
 import de.marcely.rekit.plugin.RekitServer;
-import de.marcely.rekit.plugin.TuningParameter;
 import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.map.Map;
 import de.marcely.rekit.snapshot.Snapshot;
 import de.marcely.rekit.snapshot.SnapshotBuilder;
+import de.marcely.rekit.snapshot.SnapshotDelta;
+import de.marcely.rekit.snapshot.SnapshotItem;
+import de.marcely.rekit.snapshot.SnapshotRate;
+import de.marcely.rekit.util.BufferedWriteStream;
+import de.marcely.rekit.util.IntCompressor;
 import lombok.Getter;
 
 public class Server implements RekitServer {
@@ -22,10 +26,10 @@ public class Server implements RekitServer {
 	public final Logger logger;
 	public final ProtocolHandler protocol;
 	public final MasterServerCommunication masterserver;
-	public final ServerHandler handler;
 	private final GameLoop loop;
 	
 	@Getter private boolean running = false;
+	private long startTime;
 	private int tick, tickSpeed = TICK_SPEED;
 	
 	private int maxPlayers = 8;
@@ -34,7 +38,6 @@ public class Server implements RekitServer {
 	private String serverBrowseType = "Rekit";
 	private TWMap map;
 	private String password = null;
-	private float[] tuningParams;
 	private TWWorld world;
 	
 	private SnapshotBuilder snapBuilder = new SnapshotBuilder();
@@ -43,15 +46,9 @@ public class Server implements RekitServer {
 		this.logger = new Logger("Server");
 		this.protocol = new ProtocolHandler(port, this);
 		this.masterserver = new MasterServerCommunication(this);
-		this.handler = new ServerHandler(this);
 		this.loop = new GameLoop(this);
 		this.map = map;
-		
-		// init tuning
-		this.tuningParams = new float[TuningParameter.values().length];
-		
-		for(int i=0; i<this.tuningParams.length; i++)
-			this.tuningParams[i] = TuningParameter.values()[i].getDefaultValue();
+		this.world = new TWWorld(this);
 	}
 	
 	public int getPort(){ return this.protocol.getSocket().port; }
@@ -63,10 +60,11 @@ public class Server implements RekitServer {
 		this.logger.info("Starting server with the port " + getPort() + "...");
 		
 		if(protocol.run()){
+			this.startTime = System.currentTimeMillis();
+			
 			this.logger.info("Started the server.");
 			
 			// this.masterserver.run();
-			this.handler.run();
 			this.loop.run();
 			
 			return true;
@@ -79,14 +77,13 @@ public class Server implements RekitServer {
 	
 	public boolean shutdown(){
 		masterserver.shutdown();
-		handler.shutdown();
 		protocol.shutdown();
 		
 		return true;
 	}
 	
-	public void sendPacket(InetAddress address, int port, Packet packet){
-		// protocol.sendPacket(address, port, packet);
+	public long tickStartTime(int tick){
+		return this.startTime + (System.currentTimeMillis() * tick) / this.tickSpeed;
 	}
 	
 	@Override
@@ -113,10 +110,77 @@ public class Server implements RekitServer {
 			this.doControllerSnapshot(client);
 			this.doEventsSnapshot(client);
 			
+			final long now = System.currentTimeMillis();
 			final Snapshot snap = this.snapBuilder.endBuild();
 			final int crc = snap.crc();
 			
-			client.snapStorage.purgeUntil(tick);
+			client.snapStorage.purgeUntil(tick-tickSpeed*3);
+			client.snapStorage.add(tick, now, snap);
+			
+			int deltaTick = -1;
+			final Entry<Long, Snapshot> cSnap = client.snapStorage.get(client.lastAckedSnapshot);
+			Snapshot deltaSnap = null;
+			
+			if(cSnap != null){
+				deltaTick = client.lastAckedSnapshot;
+				deltaSnap = cSnap.getValue();
+			
+			}else{
+				deltaSnap = new Snapshot(new SnapshotItem[0]);
+				
+				if(client.snapRate == SnapshotRate.FULL)
+					 client.snapRate = SnapshotRate.RECOVER;
+			}
+			
+			final int[] deltaData = new int[SnapshotBuilder.SNAPSHOT_MAX_SIZE / 4];
+			final int deltaSize = SnapshotDelta.createDelta(deltaSnap, snap, deltaData);
+			
+			if(deltaSize == 0){
+				final BufferedWriteStream stream = new BufferedWriteStream();
+				
+				stream.writeTWInt(PacketHandler.MSG_SV_SNAP_EMPTY);
+				stream.writeTWInt(this.tick);
+				stream.writeTWInt(this.tick - deltaTick);
+				
+				client.sendMsgEx(stream, true, PacketSendFlag.FLUSH);
+				continue;
+			}
+			
+			final byte[] snapData = new byte[SnapshotBuilder.SNAPSHOT_MAX_SIZE];
+			final int snapSize = IntCompressor.compress(deltaData, 0, deltaSize, snapData, 0);
+			final int packetsAmount = (snapSize + Snapshot.SNAPSHOT_MAX_PACK_SIZE - 1) / Snapshot.SNAPSHOT_MAX_PACK_SIZE;
+			
+			for(int n=0, left = snapSize; left != 0; n++){
+				final int chunk = left < Snapshot.SNAPSHOT_MAX_PACK_SIZE ? left : Snapshot.SNAPSHOT_MAX_PACK_SIZE;
+				left -= chunk;
+				
+				if(packetsAmount == 1){
+					final BufferedWriteStream stream = new BufferedWriteStream();
+					
+					stream.writeTWInt(PacketHandler.MSG_SV_SNAP_SINGLE);
+					stream.writeTWInt(this.tick);
+					stream.writeTWInt(this.tick - deltaTick);
+					stream.writeTWInt(crc);
+					stream.writeTWInt(chunk);
+					stream.write(snapData, n * Snapshot.SNAPSHOT_MAX_PACK_SIZE, chunk);
+					
+					client.sendMsgEx(stream, true, PacketSendFlag.FLUSH);
+					
+				}else{
+					final BufferedWriteStream stream = new BufferedWriteStream();
+					
+					stream.writeTWInt(PacketHandler.MSG_SV_SNAP);
+					stream.writeTWInt(this.tick);
+					stream.writeTWInt(this.tick - deltaTick);
+					stream.writeTWInt(packetsAmount);
+					stream.writeTWInt(n);
+					stream.writeTWInt(crc);
+					stream.writeTWInt(chunk);
+					stream.write(snapData, n * Snapshot.SNAPSHOT_MAX_PACK_SIZE, chunk);
+					
+					client.sendMsgEx(stream, true, PacketSendFlag.FLUSH);
+				}
+			}
 		}
 	}
 	
@@ -126,6 +190,15 @@ public class Server implements RekitServer {
 	
 	private void doEventsSnapshot(Client client){
 		
+	}
+	
+	public void tick() throws Exception {
+		this.tick++;
+		
+		if(this.tick % 2 == 0)
+			doSnapshot();
+		
+		this.protocol.tick();
 	}
 
 	@Override
@@ -217,21 +290,6 @@ public class Server implements RekitServer {
 	public String getSoftwareVersion(){
 		return "0.6.0";
 	}
-
-	@Override
-	public float getTuningParameterValue(TuningParameter param){
-		return this.tuningParams[param.ordinal()];
-	}
-
-	@Override
-	public void setTuningParameterValue(TuningParameter param, float value){
-		this.tuningParams[param.ordinal()] = value;
-	}
-
-	@Override
-	public float[] getTuningParameterValues(){
-		return this.tuningParams;
-	}
 	
 	@Override
 	public int getTicksPerSecond(){
@@ -247,9 +305,19 @@ public class Server implements RekitServer {
 	public long getGameLoopExecutionTime(){
 		return this.loop.execTime;
 	}
+	
+	@Override
+	public long getStartTime(){
+		return this.startTime;
+	}
 
 	@Override
 	public World getWorld(){
 		return (World) this.world;
+	}
+
+	@Override
+	public int getCurrentTick(){
+		return this.tick;
 	}
 }

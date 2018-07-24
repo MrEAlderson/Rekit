@@ -28,8 +28,26 @@ public enum SnapshotObjectType {
 	EVENT_SOUND_WORLD,
 	EVENT_DAMAGE_IND;
 	
+	public final int size;
+	
+	private SnapshotObjectType(){
+		final SnapshotObject instance = newInstance();
+		
+		if(instance != null)
+			this.size = instance.serializeLength();
+		else
+			this.size = -1;
+	}
+	
 	public int getID(){
 		return this.ordinal()+1;
+	}
+	
+	public static @Nullable SnapshotObjectType ofID(int id){
+		if(id <= 1 || id > values().length)
+			return null;
+		
+		return values()[id-1];
 	}
 	
 	public @Nullable SnapshotObject newInstance(){

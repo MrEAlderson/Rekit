@@ -6,7 +6,7 @@ import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotObjectPickup extends SnapshotObject {
+public class SnapshotObjectPickup extends SnapshotObject implements Cloneable  {
 	
 	public Vector2 pos;
 	public Powerup powerup = Powerup.WEAPON;
@@ -35,5 +35,14 @@ public class SnapshotObjectPickup extends SnapshotObject {
 		data[offset++] = (int) this.pos.getY();
 		data[offset++] = this.powerup.getID();
 		data[offset++] = this.weapon.getID();
+	}
+	
+	@Override
+	public SnapshotObjectPickup clone(){
+		final SnapshotObjectPickup instance = (SnapshotObjectPickup) super.clone();
+		
+		instance.pos = this.pos.clone();
+		
+		return instance;
 	}
 }

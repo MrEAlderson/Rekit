@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotEvent;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotEventExplosion extends SnapshotEvent {
+public class SnapshotEventExplosion extends SnapshotEvent implements Cloneable  {
 
 	@Override
 	public SnapshotObjectType getType(){
@@ -25,5 +25,10 @@ public class SnapshotEventExplosion extends SnapshotEvent {
 	public void serialize(int[] data, int offset){
 		data[offset++] = (int) this.pos.getX();
 		data[offset++] = (int) this.pos.getY();
+	}
+	
+	@Override
+	public SnapshotEventExplosion clone(){
+		return (SnapshotEventExplosion) super.clone();
 	}
 }

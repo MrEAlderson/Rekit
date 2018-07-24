@@ -50,8 +50,9 @@ public class Client {
 	private int sequence = 0;
 	
 	// stuff when ingame
-	private SnapshotRate snapRate = SnapshotRate.INIT;
+	public SnapshotRate snapRate = SnapshotRate.INIT;
 	public SnapshotStorage snapStorage = new SnapshotStorage();
+	public int lastAckedSnapshot;
 	
 	public ServerClientState serverState = ServerClientState.NONE;
 	public String gameVersion;

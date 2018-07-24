@@ -2,6 +2,7 @@ package de.marcely.rekit.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -94,7 +95,9 @@ public class Util {
     public static byte[] huffmanDecompress(byte[] data) throws IOException {
     	final ByteArrayOutputStream stream = new ByteArrayOutputStream();
     	
-    	AdaptiveHuffmanDecompress.decompress(new BitInputStream(new ByteArrayInputStream(data)), stream);
+    	try{
+    		AdaptiveHuffmanDecompress.decompress(new BitInputStream(new ByteArrayInputStream(data)), stream);
+    	}catch(EOFException e){ }	
     	
     	return stream.toByteArray();
     }

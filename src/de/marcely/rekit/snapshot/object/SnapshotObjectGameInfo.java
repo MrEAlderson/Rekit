@@ -3,7 +3,7 @@ package de.marcely.rekit.snapshot.object;
 import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 
-public class SnapshotObjectGameInfo extends SnapshotObject {
+public class SnapshotObjectGameInfo extends SnapshotObject implements Cloneable  {
 	
 	public byte gameFlags;
 	public byte gameStateFlags;
@@ -46,5 +46,10 @@ public class SnapshotObjectGameInfo extends SnapshotObject {
 		data[offset++] = this.timeLimit;
 		data[offset++] = this.roundAmount;
 		data[offset++] = this.currentRound;
+	}
+	
+	@Override
+	public SnapshotObjectGameInfo clone(){
+		return (SnapshotObjectGameInfo) super.clone();
 	}
 }

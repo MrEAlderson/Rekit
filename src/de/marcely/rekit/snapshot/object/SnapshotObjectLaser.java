@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotObjectLaser extends SnapshotObject {
+public class SnapshotObjectLaser extends SnapshotObject implements Cloneable  {
 
 	public Vector2 pos;
 	public Vector2 from;
@@ -34,5 +34,15 @@ public class SnapshotObjectLaser extends SnapshotObject {
 		data[offset++] = (int) this.from.getX();
 		data[offset++] = (int) this.from.getY();
 		data[offset++] = this.startTick;
+	}
+	
+	@Override
+	public SnapshotObjectLaser clone(){
+		final SnapshotObjectLaser instance = (SnapshotObjectLaser) super.clone();
+		
+		instance.pos = this.pos.clone();
+		instance.from = this.from.clone();
+		
+		return (SnapshotObjectLaser) super.clone();
 	}
 }

@@ -9,4 +9,12 @@ public class SnapshotItem {
 		this.key = key;
 		this.obj = obj;
 	}
+	
+	public int getID(){
+		return this.key & 0xFFFF;
+	}
+	
+	public SnapshotObjectType getType(){
+		return SnapshotObjectType.ofID(this.key >> 16);
+	}
 }

@@ -30,19 +30,25 @@ public class Vector2 implements Cloneable {
 	/**
 	 * 
 	 * Sets the X component
-	 * @return The new X component
+	 * @param x The new X component
+	 * @return Returns himself
 	 */
-	public void setX(float x){
+	public Vector2 setX(float x){
 		this.x = x;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Sets the Y component
-	 * @return The new Y component
+	 * @param y The new Y component
+	 * @return Returns himself
 	 */
-	public void setY(float y){
+	public Vector2 setY(float y){
 		this.y = y;
+		
+		return this;
 	}
 	
 	/**
@@ -50,10 +56,25 @@ public class Vector2 implements Cloneable {
 	 * Add the components
 	 * @param x The X component
 	 * @param y The Y Component
+	 * @return Returns himself
 	 */
-	public void add(float x, float y){
+	public Vector2 add(float x, float y){
 		this.x += x;
 		this.y += y;
+		
+		return this;
+	}
+	
+	/**
+	 * 
+	 * Does the same as add(float, float)
+	 * @param vec The other vector to add with
+	 * @return Returns himself
+	 */
+	public Vector2 add(Vector2 vec){
+		add(vec.x, vec.y);
+		
+		return this;
 	}
 	
 	/**
@@ -61,10 +82,25 @@ public class Vector2 implements Cloneable {
 	 * Subtract the components
 	 * @param x The X component
 	 * @param y The Y Component
+	 * @return Returns himself
 	 */
-	public void subtract(float x, float y){
+	public Vector2 subtract(float x, float y){
 		this.x -= x;
 		this.y -= y;
+		
+		return this;
+	}
+	
+	/**
+	 * Does the same as subtract(float, float)
+	 * @param vec The other vector to add with
+	 * @return Returns himself
+	 */
+	public Vector2 subtract(Vector2 vec){
+		this.x -= vec.x;
+		this.y -= vec.y;
+		
+		return this;
 	}
 	
 	/**
@@ -72,10 +108,13 @@ public class Vector2 implements Cloneable {
 	 * Multiply the components
 	 * @param x The X component
 	 * @param y The Y Component
+	 * @return Returns himself
 	 */
-	public void multiply(float x, float y){
+	public Vector2 multiply(float x, float y){
 		this.x *= x;
 		this.y *= y;
+		
+		return this;
 	}
 	
 	/**
@@ -83,92 +122,122 @@ public class Vector2 implements Cloneable {
 	 * Divide the components
 	 * @param x The X component
 	 * @param y The Y Component
+	 * @return Returns himself
 	 */
-	public void divide(float x, float y){
+	public Vector2 divide(float x, float y){
 		this.x /= x;
 		this.y /= y;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Add the X component
 	 * @param x The X component
+	 * @return Returns himself
 	 */
-	public void addX(float x){
+	public Vector2 addX(float x){
 		this.x += x;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Subtract the X component
 	 * @param x The X component
+	 * @return Returns himself
 	 */
-	public void subtractX(float x){
+	public Vector2 subtractX(float x){
 		this.x -= x;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Multiply the X component
 	 * @param x The X component
+	 * @return Returns himself
 	 */
-	public void multiplyX(float x){
+	public Vector2 multiplyX(float x){
 		this.x *= x;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Dive the X component
 	 * @param x The X component
+	 * @return Returns himself
 	 */
-	public void divideX(float x){
+	public Vector2 divideX(float x){
 		this.x /= x;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Add the Y component
 	 * @param y The Y component
+	 * @return Returns himself
 	 */
-	public void addY(float y){
+	public Vector2 addY(float y){
 		this.y += y;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Subtract the Y component
 	 * @param y The Y component
+	 * @return Returns himself
 	 */
-	public void subtractY(float y){
+	public Vector2 subtractY(float y){
 		this.y -= y;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Multiply the Y component
 	 * @param y The Y component
+	 * @return Returns himself
 	 */
-	public void multiplyY(float y){
+	public Vector2 multiplyY(float y){
 		this.y *= y;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Dive the Y component
 	 * @param y The Y component
+	 * @return Returns himself
 	 */
-	public void divideY(float y){
+	public Vector2 divideY(float y){
 		this.y /= y;
+		
+		return this;
 	}
 	
 	/**
 	 * 
 	 * Sets the components of this Vector to the Components of an other Vector
 	 * @param vec The other vector
+	 * @return Returns himself
 	 */
-	public void copy(Vector2 vec){
+	public Vector2 copy(Vector2 vec){
 		this.x = vec.x;
 		this.y = vec.y;
+		
+		return this;
 	}
 	
 	/**
@@ -203,10 +272,23 @@ public class Vector2 implements Cloneable {
 	/**
 	 * 
 	 * Sets all Components to 0
+	 * @return Returns himself
 	 */
-	public void zero(){
+	public Vector2 zero(){
 		this.x = 0;
 		this.y = 0;
+		
+		return this;
+	}
+	
+	public Vector2 normalize(){
+		final float l = 1F / length();
+		
+		return new Vector2(this.x*l, this.y*l);
+	}
+	
+	public float length(){
+		return (float) Math.sqrt(x*x + y*y);
 	}
 	
 	@Override

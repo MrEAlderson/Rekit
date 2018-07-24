@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotObjectSpectatorInfo extends SnapshotObject {
+public class SnapshotObjectSpectatorInfo extends SnapshotObject implements Cloneable  {
 	
 	public int spectatorID;
 	public Vector2 viewPos;
@@ -30,5 +30,14 @@ public class SnapshotObjectSpectatorInfo extends SnapshotObject {
 		data[offset++] = this.spectatorID;
 		data[offset++] = (int) this.viewPos.getX();
 		data[offset++] = (int) this.viewPos.getY();
+	}
+	
+	@Override
+	public SnapshotObjectSpectatorInfo clone(){
+		final SnapshotObjectSpectatorInfo instance = (SnapshotObjectSpectatorInfo) super.clone();
+		
+		instance.viewPos = this.viewPos.clone();
+		
+		return instance;
 	}
 }

@@ -45,7 +45,7 @@ public class GameLoop {
 	
 	private void tick(){
 		try{
-			server.protocol.tick();
+			server.tick();
 		}catch(Exception e){
 			e.printStackTrace();
 		}

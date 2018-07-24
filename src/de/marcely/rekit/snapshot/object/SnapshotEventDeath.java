@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotEvent;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotEventDeath extends SnapshotEvent {
+public class SnapshotEventDeath extends SnapshotEvent implements Cloneable  {
 	
 	public int clientID;
 	
@@ -29,5 +29,10 @@ public class SnapshotEventDeath extends SnapshotEvent {
 		data[offset++] = (int) this.pos.getX();
 		data[offset++] = (int) this.pos.getY();
 		data[offset++] = this.clientID;
+	}
+	
+	@Override
+	public SnapshotEventDeath clone(){
+		return (SnapshotEventDeath) super.clone();
 	}
 }

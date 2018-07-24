@@ -25,5 +25,13 @@ public interface World {
 	
 	public short getNextAvailableEntityId();
 	
+	public float getTuningParameterValue(TuningParameter param);
+	
+	public void setTuningParameterValue(TuningParameter param, float value);
+	
+	public float[] getTuningParameterValues();
+	
+	public boolean isPaused();
+	
 	public Server getServer();
 }

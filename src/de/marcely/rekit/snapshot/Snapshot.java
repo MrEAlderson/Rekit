@@ -4,6 +4,8 @@ import com.sun.istack.internal.Nullable;
 
 public class Snapshot {
 	
+	public static final int SNAPSHOT_MAX_PACK_SIZE = 900;
+	
 	private SnapshotItem[] items;
 	
 	public Snapshot(SnapshotItem[] items){
@@ -38,5 +40,13 @@ public class Snapshot {
 		}
 		
 		return crc;
+	}
+	
+	public int getItemsAmount(){
+		return this.items.length;
+	}
+	
+	public SnapshotItem getItemOfIndex(int i){
+		return this.items[i];
 	}
 }

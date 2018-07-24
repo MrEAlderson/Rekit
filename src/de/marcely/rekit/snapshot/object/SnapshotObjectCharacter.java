@@ -7,7 +7,7 @@ import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotObjectCharacter extends SnapshotObject {
+public class SnapshotObjectCharacter extends SnapshotObject implements Cloneable  {
 	
 	public int tick;
 	public Vector2 pos;
@@ -86,5 +86,16 @@ public class SnapshotObjectCharacter extends SnapshotObject {
 		data[offset++] = this.weapon.getID();
 		data[offset++] = this.emote.getID();
 		data[offset++] = this.attackTick;
+	}
+	
+	@Override
+	public SnapshotObjectCharacter clone(){
+		final SnapshotObjectCharacter instance = (SnapshotObjectCharacter) super.clone();
+		
+		instance.pos = this.pos.clone();
+		instance.velo = this.velo.clone();
+		instance.hookPos = this.hookPos.clone();
+		
+		return instance;
 	}
 }

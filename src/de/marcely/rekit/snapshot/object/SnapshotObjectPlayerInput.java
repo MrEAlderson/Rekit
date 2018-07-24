@@ -4,7 +4,7 @@ import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.util.Vector2;
 
-public class SnapshotObjectPlayerInput extends SnapshotObject {
+public class SnapshotObjectPlayerInput extends SnapshotObject implements Cloneable  {
 	
 	public int direction;
 	public Vector2 target;
@@ -51,5 +51,14 @@ public class SnapshotObjectPlayerInput extends SnapshotObject {
 		data[offset++] = this.wantedWeapon;
 		data[offset++] = this.nextWeapon;
 		data[offset++] = this.prevWeapon;
+	}
+	
+	@Override
+	public SnapshotObjectPlayerInput clone(){
+		final SnapshotObjectPlayerInput instance = (SnapshotObjectPlayerInput) super.clone();
+		
+		instance.target = this.target.clone();
+		
+		return instance;
 	}
 }

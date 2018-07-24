@@ -230,7 +230,7 @@ public class ClientHandler implements PacketHandler {
 	public void sendTunings(){
 		final PacketGameServerTuneParams packet = new PacketGameServerTuneParams();
 		
-		packet.values = this.client.getServer().getTuningParameterValues();
+		packet.values = this.client.getServer().getWorld().getTuningParameterValues();
 		
 		this.client.sendDataPacket(packet, PacketSendFlag.VITAL);
 	}
