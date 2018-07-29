@@ -86,8 +86,6 @@ public class ClientHandler implements PacketHandler {
 		if(this.client.serverState != ServerClientState.READY)
 			return;
 		
-		System.out.println("Player with the ID " + client.getId() + " entered the game");
-		
 		final EntityPlayer player = this.client.getServer().getWorld().spawn(EntityType.PLAYER, new Vector2(0, 0), SpawnCause.WOLRLD);
 		
 		player.client = this.client;
@@ -97,6 +95,8 @@ public class ClientHandler implements PacketHandler {
 		this.client.player = player;
 		this.client.serverState = ServerClientState.IN_GAME;
 		((TWWorld) this.client.getServer().getWorld()).players.add(player);
+		
+		System.out.println("Player with the ID " + player.getID() + " entered the game");
 	}
 
 	@Override

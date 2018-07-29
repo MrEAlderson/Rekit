@@ -172,7 +172,7 @@ public class MapFile {
 							
 							for(int tx=0; tx<layerTile.width; tx++){
 								for(int ty=0; ty<layerTile.height; ty++){
-									map.tiles[tx][ty] = new Tile(map, tx, ty, tiles[ty*layerTile.width+tx].index);
+									map.tiles[tx][ty] = (TWTile) map.getTileByIndex(tiles[ty*layerTile.width+tx].index);
 								}
 							}
 							
@@ -213,10 +213,11 @@ public class MapFile {
 	
 	public static class MapTile {
 		
-		public final int index, flags;
+		public final short index;
+		public final int flags;
 		
 		public MapTile(BufferedReadStream reader){
-			this.index = reader.readUnsignedByte();
+			this.index = (short) reader.readUnsignedByte();
 			this.flags = reader.readUnsignedByte();
 			
 			reader.setOffset(reader.getOffset()+2);

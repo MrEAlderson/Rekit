@@ -54,6 +54,11 @@ public abstract class TWEntity implements Entity {
 	}
 	
 	@Override
+	public int getID(){
+		return this.id;
+	}
+	
+	@Override
 	public World getWorld(){
 		return this.world;
 	}
@@ -61,5 +66,9 @@ public abstract class TWEntity implements Entity {
 	@Override
 	public Server getServer(){
 		return this.world.getServer();
+	}
+	
+	public void destroySnapshot(){
+		
 	}
 }

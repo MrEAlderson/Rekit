@@ -9,6 +9,8 @@ import de.marcely.rekit.network.server.Server;
 import de.marcely.rekit.plugin.TuningParameter;
 import de.marcely.rekit.plugin.World;
 import de.marcely.rekit.plugin.entity.*;
+import de.marcely.rekit.plugin.player.Team;
+import de.marcely.rekit.util.Util;
 import de.marcely.rekit.util.Vector2;
 
 public class TWWorld implements World {
@@ -19,15 +21,22 @@ public class TWWorld implements World {
 	public final List<Player> players = new ArrayList<>();
 	private final float[] tuningParams;
 	private boolean isPaused;
+	private List<Vector2>[] spawnPositions;
 	
+	private int nextID;
+	
+	@SuppressWarnings("unchecked")
 	public TWWorld(Server server){
 		this.server = server;
+		this.spawnPositions = new List[2];
 		
 		// init tuning
 		this.tuningParams = new float[TuningParameter.values().length];
 		
 		for(int i=0; i<this.tuningParams.length; i++)
 			this.tuningParams[i] = TuningParameter.values()[i].getDefaultValue();
+		
+		// find spawn points
 	}
 	
 	@Override
@@ -82,13 +91,14 @@ public class TWWorld implements World {
 		}
 		
 		this.entities.add(entity);
+		this.nextID++;
 		
 		return (T) entity;
 	}
 	
 	@Override
-	public short getNextAvailableEntityId(){
-		return 0;
+	public int getNextAvailableEntityId(){
+		return this.nextID;
 	}
 	
 	@Override
@@ -115,9 +125,36 @@ public class TWWorld implements World {
 		for(Entity entity:this.entities)
 			((TWEntity) entity).doSnapshot(client);
 	}
+	
+	@Override
+	public List<Vector2> getSpawnPositions(Team team){
+		if(team.getID() < 0) return new ArrayList<>();
+		
+		return this.spawnPositions[team.getID()];
+	}
+
+	@Override
+	public Vector2 getRandomSpawnPosition(Team team){
+		final List<Vector2> list = getSpawnPositions(team);
+		
+		if(list.size() == 0)
+			return null;
+		
+		return list.get(Util.RAND.nextInt(list.size()));
+	}
 
 	@Override
 	public boolean isPaused(){
 		return this.isPaused;
+	}
+
+	@Override
+	public void addSpawnPosition(Team team, Vector2 pos){
+		getSpawnPositions(team).add(pos);
+	}
+
+	@Override
+	public void removeSpawnPosition(Team team, Vector2 pos){
+		getSpawnPositions(team).remove(pos);
 	}
 }

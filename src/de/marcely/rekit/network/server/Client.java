@@ -36,7 +36,6 @@ public class Client {
 	
 	@Getter private final Server server;
 	@Getter private final InetSocketAddress address;
-	@Getter private final short id;
 	@Getter private final ClientHandler handler;
 	
 	// stuff for the protocol
@@ -66,10 +65,9 @@ public class Client {
 	public boolean gameHasCustomColor;
 	public Color gameBodyColor, gameFeetColor;
 	
-	public Client(Server server, InetSocketAddress address, short id){
+	public Client(Server server, InetSocketAddress address){
 		this.server = server;
 		this.address = address;
-		this.id = id;
 		this.handler = new ClientHandler(this);
 	}
 	
@@ -107,12 +105,16 @@ public class Client {
 		
 		this.state = ClientState.DISCONNECTED;
 		
-		this.server.protocol.clients.remove(this.id);
-		this.server.protocol.clients2.remove(getIdentifier());
+		this.server.protocol.clients.remove(getIdentifier());
 		this.server.protocol.bufferedChunks.remove(getIdentifier());
 		
 		for(PacketReceiver receiver:this.server.protocol.receivers)
 			receiver.onDisconnect(this);
+		
+		if(this.player != null){
+			this.server.protocol.ingameClients.remove(this.player.getID());
+			this.player.remove();
+		}
 		
 		System.out.println("Disconnected");
 		

@@ -3,12 +3,14 @@ package de.marcely.rekit.network.server;
 import java.util.Map.Entry;
 
 import de.marcely.rekit.TWWorld;
+import de.marcely.rekit.entity.EntityPlayer;
 import de.marcely.rekit.logger.Logger;
 import de.marcely.rekit.map.TWMap;
 import de.marcely.rekit.network.master.MasterServerCommunication;
 import de.marcely.rekit.network.packet.PacketSendFlag;
 import de.marcely.rekit.plugin.RekitServer;
 import de.marcely.rekit.plugin.World;
+import de.marcely.rekit.plugin.entity.Player;
 import de.marcely.rekit.plugin.map.Map;
 import de.marcely.rekit.snapshot.Snapshot;
 import de.marcely.rekit.snapshot.SnapshotBuilder;
@@ -120,6 +122,9 @@ public class Server implements RekitServer {
 			this.world.doSnapshot(client);
 			this.controller.doSnapshot(client);
 			this.events.doSnapshot(client);
+			
+			for(Player player:this.world.getPlayers())
+				((EntityPlayer) player).doSnapshotPlayer(client);
 			
 			final long now = System.currentTimeMillis();
 			final Snapshot snap = this.snapBuilder.endBuild();

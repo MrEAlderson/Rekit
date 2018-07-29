@@ -42,10 +42,10 @@ public class Events {
 	
 	public void doSnapshot(@Nullable Client client){
 		for(EventInfo info:this.events){
-			if(client == null || server.maskIsSet(info.mask, client.getId())){
+			if(client == null || server.maskIsSet(info.mask, client.player.getID())){
 				if(client == null ||
 				   client.player.viewPos.distance(info.snap.pos) < 1500F){
-					this.server.snapBuilder.addItem(info.snap, client.getId());
+					this.server.snapBuilder.addItem(info.snap, client.player.getID());
 				}
 			}
 		}

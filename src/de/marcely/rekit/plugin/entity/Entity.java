@@ -18,6 +18,8 @@ public interface Entity {
 	
 	public boolean exists();
 	
+	public int getID();
+	
 	public World getWorld();
 	
 	public Server getServer();

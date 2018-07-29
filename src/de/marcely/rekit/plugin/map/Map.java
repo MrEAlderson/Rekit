@@ -14,7 +14,11 @@ public interface Map {
 	
 	public int getHeight();
 	
-	public byte getGameIndexAt(int x, int y);
+	public Tile getTileAt(int x, int y);
+	
+	public Tile getTileByIndex(short index);
+	
+	public short getMaxTileIndex();
 	
 	public int getSize();
 }

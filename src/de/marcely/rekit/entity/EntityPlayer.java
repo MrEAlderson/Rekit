@@ -1,5 +1,8 @@
 package de.marcely.rekit.entity;
 
+import java.awt.Color;
+import java.net.InetAddress;
+
 import de.marcely.rekit.TWWorld;
 import de.marcely.rekit.network.server.Client;
 import de.marcely.rekit.plugin.TuningParameter;
@@ -11,7 +14,10 @@ import de.marcely.rekit.plugin.player.HookState;
 import de.marcely.rekit.plugin.player.Team;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.snapshot.object.SnapshotObjectCharacter;
+import de.marcely.rekit.snapshot.object.SnapshotObjectClientInfo;
+import de.marcely.rekit.snapshot.object.SnapshotObjectPlayerInfo;
 import de.marcely.rekit.snapshot.object.SnapshotObjectPlayerInput;
+import de.marcely.rekit.snapshot.object.SnapshotObjectSpectatorInfo;
 import de.marcely.rekit.util.MathUtil;
 import de.marcely.rekit.util.Vector2;
 
@@ -28,6 +34,10 @@ public class EntityPlayer extends TWEntity implements Player {
 	private static final int CORE_EVENT_HOOK_RETRACT = 0x40;
 	
 	public Client client;
+	
+	public String name = "Nameless Tea";
+	public Color feetColor, bodyColor;
+	public String skinName = "Default";
 	
 	public Vector2 viewPos;
 	private Vector2 velo;
@@ -56,7 +66,7 @@ public class EntityPlayer extends TWEntity implements Player {
 	public int health, armor, ammo;
 	public boolean isAlive;
 	public boolean spawning = false;
-	public Team team;
+	public Team team = Team.SPECTATOR;
 	
 	public EntityPlayer(TWWorld world, int id){
 		super(world, id);
@@ -439,7 +449,7 @@ public class EntityPlayer extends TWEntity implements Player {
             }
 		 */
 		
-		final SnapshotObjectCharacter snap = this.world.getServer().snapBuilder.newObject(client.getId(), SnapshotObjectType.OBJECT_CHARACTER);
+		final SnapshotObjectCharacter snap = this.world.getServer().snapBuilder.newObject(this.id, SnapshotObjectType.OBJECT_CHARACTER);
 		
 		if(this.reckoningTick == 0 || this.world.isPaused()){
 			snap.tick = 0;
@@ -467,7 +477,7 @@ public class EntityPlayer extends TWEntity implements Player {
 		snap.hookState = this.hookState;
 		snap.hookPos = this.hookPos;
 		
-		if(client == null || client.getId() == this.client.getId()){
+		if(client == null || getID() == client.player.getID()){
 			snap.health = this.health;
 			snap.armor = this.armor;
 			
@@ -493,6 +503,31 @@ public class EntityPlayer extends TWEntity implements Player {
 		 */
 		
 		snap.playerFlags = this.playerFlags;
+	}
+	
+	public void doSnapshotPlayer(Client client){
+		final SnapshotObjectClientInfo snapClient = this.world.getServer().snapBuilder.newObject(this.id, SnapshotObjectType.OBJECT_CLIENT_INFO);
+		final SnapshotObjectPlayerInfo snapPlayer = this.world.getServer().snapBuilder.newObject(this.id, SnapshotObjectType.OBJECT_PLAYER_INFO);
+		
+		snapClient.name = this.getName();
+		snapClient.clan = this.getClan();
+		snapClient.country = 0;
+		snapClient.skin = this.getSkinName();
+		snapClient.hasCustomColor = false;
+		snapClient.bodyColor = 0;
+		snapClient.feetColor = 0;
+		
+		snapPlayer.team = Team.SPECTATOR;
+		snapPlayer.score = 0;
+		snapPlayer.local = this.getID() == client.player.getID();
+		snapPlayer.latency = 10;
+		
+		if(client.player.getID() == this.getID() && this.team == Team.SPECTATOR){
+			final SnapshotObjectSpectatorInfo snapSpec = this.world.getServer().snapBuilder.newObject(this.id, SnapshotObjectType.OBJECT_SPECTATOR_INFO);
+			
+			snapSpec.spectatorID = this.getID();
+			snapSpec.viewPos = this.viewPos;
+		}
 	}
 
 	@Override
@@ -541,5 +576,80 @@ public class EntityPlayer extends TWEntity implements Player {
 	public void respawn(){
 		if(this.team != Team.SPECTATOR)
 			this.spawning = true;
+	}
+
+	@Override
+	public String getName(){
+		return this.name;
+	}
+
+	@Override
+	public boolean isRealPlayer(){
+		return this.client != null;
+	}
+
+	@Override
+	public InetAddress getAddress(){
+		if(!isRealPlayer()){
+			new UnsupportedOperationException("Player is not real").printStackTrace();
+			return null;
+		}
+		
+		return this.client.getAddress().getAddress();
+	}
+
+	@Override
+	public int getPort(){
+		if(!isRealPlayer()){
+			new UnsupportedOperationException("Player is not real").printStackTrace();
+			return -1;
+		}
+		
+		return this.client.getAddress().getPort();
+	}
+
+	@Override
+	public long getLoginTime(){
+		if(!isRealPlayer()){
+			new UnsupportedOperationException("Player is not real").printStackTrace();
+			return -1;
+		}
+		
+		return this.client.getLoginDate();
+	}
+
+	@Override
+	public String getClan(){
+		if(!isRealPlayer()){
+			new UnsupportedOperationException("Player is not real").printStackTrace();
+			return null;
+		}
+		
+		return this.client.gameClan;
+	}
+
+	@Override
+	public boolean hasBodyColor(){
+		return this.bodyColor != null;
+	}
+
+	@Override
+	public boolean hasFeetColor(){
+		return this.feetColor != null;
+	}
+
+	@Override
+	public Color getBodyColor(){
+		return this.bodyColor;
+	}
+
+	@Override
+	public Color getFeetColor(){
+		return this.feetColor;
+	}
+
+	@Override
+	public String getSkinName(){
+		return this.skinName;
 	}
 }

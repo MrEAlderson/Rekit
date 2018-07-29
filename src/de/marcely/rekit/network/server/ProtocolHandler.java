@@ -53,8 +53,8 @@ public class ProtocolHandler {
 	public List<PacketReceiver> receivers = new ArrayList<PacketReceiver>();
 	private Map<Byte, QueuedPacket> sendQueuedAcks = new HashMap<>();
 	public Map<String, ChunkBuffer> bufferedChunks = new HashMap<>();
-	public java.util.Map<Short, Client> clients = new ConcurrentHashMap<>();
-	public java.util.Map<String, Client> clients2 = new HashMap<>();
+	public java.util.Map<Integer, Client> ingameClients = new ConcurrentHashMap<>();
+	public java.util.Map<String, Client> clients = new HashMap<>();
 	
 	public ProtocolHandler(int port, Server server){
 		this.socket = new UDPSocket(port, PACKET_MAX_SIZE);
@@ -141,10 +141,9 @@ public class ProtocolHandler {
 				}
 				
 				// login
-				client = new Client(Main.SERVER, new InetSocketAddress(address, port), getNextBestClientID());
+				client = new Client(Main.SERVER, new InetSocketAddress(address, port));
 				
-				this.clients.put(client.getId(), client);
-				this.clients2.put(client.getIdentifier(), client);
+				this.clients.put(client.getIdentifier(), client);
 				
 				sendControlPacket(address, port, 0,
 						PACKET_TYPE_CONNECT_ACCEPT, "");
@@ -331,23 +330,11 @@ public class ProtocolHandler {
 	}
 	
 	public boolean isConnected(InetAddress address, int port){
-		return clients2.containsKey(Util.getIdentifier(address, port));
+		return clients.containsKey(Util.getIdentifier(address, port));
 	}
 	
 	public Client getClient(InetAddress address, int port){
-		return clients2.get(Util.getIdentifier(address, port));
-	}
-	
-	private short getNextBestClientID(){
-		short id = 0;
-		
-		while(id++ < Short.MAX_VALUE-1){
-			if(clients.containsKey(id)) continue;
-			
-			return id;
-		}
-		
-		return -1;
+		return clients.get(Util.getIdentifier(address, port));
 	}
 	
     public static boolean isSequenceInBackroom(int seq, int ack){

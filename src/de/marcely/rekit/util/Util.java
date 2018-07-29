@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Random;
 import java.util.zip.CRC32;
 
 import com.sun.istack.internal.Nullable;
@@ -28,6 +29,7 @@ public class Util {
             9, 10, 25, 22, 22, 17, 20, 16, 6, 16, 15, 20, 14, 18, 24, 335, 1517
      };
 	
+    public static final Random RAND = new Random();
 	public static final Huffman HUFFMAN = new Huffman(HUFFMAN_FREQ_TABLE);
 	
 	public static @Nullable InetAddress getInetAddress(String address){
