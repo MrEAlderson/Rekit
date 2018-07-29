@@ -8,6 +8,8 @@ import de.marcely.rekit.plugin.entity.Player;
 import de.marcely.rekit.plugin.entity.Weapon;
 import de.marcely.rekit.plugin.player.Emote;
 import de.marcely.rekit.plugin.player.HookState;
+import de.marcely.rekit.plugin.player.Team;
+import de.marcely.rekit.snapshot.SnapshotObjectType;
 import de.marcely.rekit.snapshot.object.SnapshotObjectCharacter;
 import de.marcely.rekit.snapshot.object.SnapshotObjectPlayerInput;
 import de.marcely.rekit.util.MathUtil;
@@ -27,6 +29,7 @@ public class EntityPlayer extends TWEntity implements Player {
 	
 	public Client client;
 	
+	public Vector2 viewPos;
 	private Vector2 velo;
 	private Vector2 hookPos;
 	private Vector2 hookDir;
@@ -52,6 +55,8 @@ public class EntityPlayer extends TWEntity implements Player {
 	public Weapon weapon;
 	public int health, armor, ammo;
 	public boolean isAlive;
+	public boolean spawning = false;
+	public Team team;
 	
 	public EntityPlayer(TWWorld world, int id){
 		super(world, id);
@@ -434,7 +439,7 @@ public class EntityPlayer extends TWEntity implements Player {
             }
 		 */
 		
-		final SnapshotObjectCharacter snap = new SnapshotObjectCharacter();
+		final SnapshotObjectCharacter snap = this.world.getServer().snapBuilder.newObject(client.getId(), SnapshotObjectType.OBJECT_CHARACTER);
 		
 		if(this.reckoningTick == 0 || this.world.isPaused()){
 			snap.tick = 0;
@@ -450,6 +455,8 @@ public class EntityPlayer extends TWEntity implements Player {
 			this.emote = Emote.NORMAL;
 		}
 		
+		snap.pos = this.pos;
+		snap.velo = this.velo;
 		snap.emote = this.emote;
 		snap.ammoCount = 0;
 		snap.health = 0;
@@ -457,6 +464,8 @@ public class EntityPlayer extends TWEntity implements Player {
 		snap.weapon = this.weapon;
 		snap.attackTick = this.attackTick;
 		snap.direction = this.input.direction;
+		snap.hookState = this.hookState;
+		snap.hookPos = this.hookPos;
 		
 		if(client == null || client.getId() == this.client.getId()){
 			snap.health = this.health;
@@ -514,5 +523,23 @@ public class EntityPlayer extends TWEntity implements Player {
 	@Override
 	public boolean isAlive(){
 		return this.isAlive;
+	}
+	
+	public void reset(){
+		this.emote = Emote.NORMAL;
+		this.weapon = Weapon.HAMMER;
+		this.health = 5;
+		this.ammo = 5;
+		this.armor = 5;
+		this.team = Team.RED;
+		this.input = new SnapshotObjectPlayerInput();
+		this.velo = new Vector2(0, 0);
+		this.hookState = HookState.IDLE;
+		this.hookPos = new Vector2(0, 0);
+	}
+	
+	public void respawn(){
+		if(this.team != Team.SPECTATOR)
+			this.spawning = true;
 	}
 }

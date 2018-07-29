@@ -47,6 +47,10 @@ public interface RekitServer {
 	
 	public long getStartTime();
 	
+	public int getTimeLimit();
+	
+	public int getScoreLimit();
+	
 	public static RekitServer getServer(){
 		return Main.SERVER;
 	}

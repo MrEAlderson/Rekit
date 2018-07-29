@@ -5,6 +5,7 @@ import java.io.File;
 import de.marcely.rekit.logger.Logger;
 import de.marcely.rekit.map.MapFile;
 import de.marcely.rekit.network.server.Server;
+import de.marcely.rekit.snapshot.SnapshotObjectType;
 
 public class Main {
 	
@@ -18,6 +19,8 @@ public class Main {
 		LOGGER.info(" Created by MrEAlderson");
 		LOGGER.info("============================");
 		LOGGER.info("");
+		
+		SnapshotObjectType.init();
 		
 		final MapFile file = new MapFile(new File("F:/Program Files (x86)/Steam/steamapps/common/Teeworlds/tw/data/maps/ctf1.map"));
 		

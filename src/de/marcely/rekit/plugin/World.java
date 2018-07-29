@@ -19,9 +19,9 @@ public interface World {
 	
 	public boolean exists(Entity entity);
 	
-	public Entity spawn(EntityType type, Vector2 pos);
+	public <T extends Entity> T spawn(EntityType type, Vector2 pos);
 	
-	public Entity spawn(EntityType type, Vector2 pos, SpawnCause cause);
+	public <T extends Entity> T spawn(EntityType type, Vector2 pos, SpawnCause cause);
 	
 	public short getNextAvailableEntityId();
 	

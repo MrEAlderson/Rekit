@@ -3,7 +3,7 @@ package de.marcely.rekit.snapshot.object;
 import de.marcely.rekit.snapshot.SnapshotObject;
 import de.marcely.rekit.snapshot.SnapshotObjectType;
 
-public class SnapshotObjectGameInfo extends SnapshotObject implements Cloneable  {
+public class SnapshotObjectGameInfo extends SnapshotObject implements Cloneable {
 	
 	public byte gameFlags;
 	public byte gameStateFlags;

@@ -27,6 +27,8 @@ public class Server implements RekitServer {
 	public final ProtocolHandler protocol;
 	public final MasterServerCommunication masterserver;
 	private final GameLoop loop;
+	private final GameController controller;
+	private final Events events;
 	
 	@Getter private boolean running = false;
 	private long startTime;
@@ -39,8 +41,9 @@ public class Server implements RekitServer {
 	private TWMap map;
 	private String password = null;
 	private TWWorld world;
+	private int timeLimit = 10, scoreLimit = 30;
 	
-	private SnapshotBuilder snapBuilder = new SnapshotBuilder();
+	public SnapshotBuilder snapBuilder = new SnapshotBuilder();
 	
 	public Server(int port, TWMap map){
 		this.logger = new Logger("Server");
@@ -49,6 +52,8 @@ public class Server implements RekitServer {
 		this.loop = new GameLoop(this);
 		this.map = map;
 		this.world = new TWWorld(this);
+		this.controller = new GameController(this);
+		this.events = new Events(this);
 	}
 	
 	public int getPort(){ return this.protocol.getSocket().port; }
@@ -104,11 +109,17 @@ public class Server implements RekitServer {
 			if(client.serverState != ServerClientState.IN_GAME)
 				continue;
 			
+			if(client.snapRate == SnapshotRate.RECOVER && this.tick % this.tickSpeed != 0)
+				continue;
+			
+			if(client.snapRate == SnapshotRate.INIT && tick % 10 != 0)
+				continue;
+			
 			this.snapBuilder.startBuild();
 			
 			this.world.doSnapshot(client);
-			this.doControllerSnapshot(client);
-			this.doEventsSnapshot(client);
+			this.controller.doSnapshot(client);
+			this.events.doSnapshot(client);
 			
 			final long now = System.currentTimeMillis();
 			final Snapshot snap = this.snapBuilder.endBuild();
@@ -184,21 +195,22 @@ public class Server implements RekitServer {
 		}
 	}
 	
-	private void doControllerSnapshot(Client client){
-		
-	}
-	
-	private void doEventsSnapshot(Client client){
-		
-	}
-	
 	public void tick() throws Exception {
 		this.tick++;
 		
 		if(this.tick % 2 == 0)
 			doSnapshot();
 		
+		this.controller.tick();
 		this.protocol.tick();
+	}
+	
+	public int maskOne(int clientID){
+		return 1 << clientID;
+	}
+	
+	public boolean maskIsSet(int mask, int clientID){
+		return (mask & maskOne(clientID)) != 0;
 	}
 
 	@Override
@@ -319,5 +331,15 @@ public class Server implements RekitServer {
 	@Override
 	public int getCurrentTick(){
 		return this.tick;
+	}
+
+	@Override
+	public int getTimeLimit(){
+		return this.timeLimit;
+	}
+
+	@Override
+	public int getScoreLimit(){
+		return this.scoreLimit;
 	}
 }

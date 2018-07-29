@@ -1,6 +1,5 @@
 package de.marcely.rekit.network.server;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -108,10 +107,10 @@ public class ProtocolHandler {
 				if(PacketFlag.has(flags, PacketFlag.CONTROL))
 					return;
 				
-				try{
-					buffer = Util.huffmanDecompress(buffer);
-				}catch(IOException e){
-					e.printStackTrace();
+				final byte[] data = new byte[PACKET_MAX_SIZE];
+				
+				if(Util.HUFFMAN.decompress(buffer, 0, buffer.length, data, 0, data.length) == -1){
+					new UnsupportedOperationException("Huffman decoding failed").printStackTrace();
 					return;
 				}
 			}
@@ -371,28 +370,32 @@ public class ProtocolHandler {
     
 	private void sendPacket(InetAddress address, int port, byte flagsMask, int ack, byte chunksAmount, byte[] data){
 		final byte[] buffer = new byte[PACKET_MAX_SIZE];
-		byte[] compressed = null;
+		int finalSize = 0;
+		int compressedSize = 0;
 		
-		try{
-			compressed = Util.huffmanCompress(data);
-		}catch(IOException e){
-			e.printStackTrace();
+		compressedSize = Util.HUFFMAN.compress(data, 0, data.length, buffer, PACKET_HEADER_SIZE, buffer.length - PACKET_HEADER_SIZE);
+		
+		if(compressedSize == -1){
+			new UnsupportedOperationException("Huffman encoding failed").printStackTrace();
 			return;
 		}
 		
-		if(compressed.length > 0 && compressed.length < data.length){
-			System.arraycopy(compressed, 0, buffer, PACKET_HEADER_SIZE, compressed.length);
+		if(compressedSize > 0 && compressedSize < data.length){
+			finalSize = compressedSize;
 			flagsMask |= PacketFlag.COMPRESSION.getMask();
 		
 		}else{
+			finalSize = data.length;
 			System.arraycopy(data, 0, buffer, PACKET_HEADER_SIZE, data.length);
 			flagsMask &= ~PacketFlag.COMPRESSION.getMask();
 		}
+		
+		finalSize += PACKET_HEADER_SIZE;
 		
 		buffer[0] = (byte) ((((int) flagsMask << 4) & 0xF0) | ((ack >> 8) & 0xF));
 		buffer[1] = (byte) (ack & 0xFF);
 		buffer[2] = chunksAmount;
 		
-		this.socket.sendRawPacket(address, port, buffer);
+		this.socket.sendRawPacket(address, port, Util.arraycopy(buffer, 0, finalSize));
 	}
 }

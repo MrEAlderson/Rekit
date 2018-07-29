@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 
 import de.marcely.rekit.Message;
+import de.marcely.rekit.entity.EntityPlayer;
 import de.marcely.rekit.network.packet.DataPacket;
 import de.marcely.rekit.network.packet.Packet;
 import de.marcely.rekit.network.packet.PacketFlag;
@@ -54,6 +55,7 @@ public class Client {
 	public SnapshotStorage snapStorage = new SnapshotStorage();
 	public int lastAckedSnapshot;
 	
+	public EntityPlayer player;
 	public ServerClientState serverState = ServerClientState.NONE;
 	public String gameVersion;
 	public long gameLastChangedInfo;
@@ -395,6 +397,9 @@ public class Client {
 	
 	public void sendMsgEx(BufferedWriteStream stream, boolean isSystem, PacketSendFlag... flags){
 		final PacketChunk packet = new PacketChunk(flags, stream.toByteArray());
+		
+		if(isSystem && packet.buffer[0] >= 5 && packet.buffer[0] <= 8)
+			System.out.println(packet.buffer[0] + " " + this.ack);
 		
 		packet.buffer[0] <<= 1;
 		

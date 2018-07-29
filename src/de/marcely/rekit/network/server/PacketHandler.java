@@ -53,7 +53,6 @@ public interface PacketHandler {
 	
 	public void handleMsgPing(BufferedReadStream stream);
 	
-	
 	public void handleData(PacketGameClientCallVote packet);
 	
 	public void handleData(PacketGameClientChangeInfo packet);

@@ -54,12 +54,13 @@ public class TWWorld implements World {
 	}
 	
 	@Override
-	public Entity spawn(EntityType type, Vector2 pos){
+	public <T extends Entity> T spawn(EntityType type, Vector2 pos){
 		return spawn(type, pos, SpawnCause.PLUGIN);
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
-	public Entity spawn(EntityType type, Vector2 pos, SpawnCause cause){
+	public <T extends Entity> T spawn(EntityType type, Vector2 pos, SpawnCause cause){
 		Entity entity = null;
 		
 		switch(type){
@@ -82,7 +83,7 @@ public class TWWorld implements World {
 		
 		this.entities.add(entity);
 		
-		return entity;
+		return (T) entity;
 	}
 	
 	@Override

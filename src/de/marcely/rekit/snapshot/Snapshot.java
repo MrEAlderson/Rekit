@@ -35,6 +35,8 @@ public class Snapshot {
 		for(SnapshotItem item:this.items){
 			final int[] data = new int[item.obj.serializeLength()];
 			
+			item.obj.serialize(data, 0);
+			
 			for(int field:data)
 				crc += field;
 		}

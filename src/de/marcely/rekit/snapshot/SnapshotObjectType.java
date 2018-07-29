@@ -28,16 +28,9 @@ public enum SnapshotObjectType {
 	EVENT_SOUND_WORLD,
 	EVENT_DAMAGE_IND;
 	
-	public final int size;
+	public int size;
 	
-	private SnapshotObjectType(){
-		final SnapshotObject instance = newInstance();
-		
-		if(instance != null)
-			this.size = instance.serializeLength();
-		else
-			this.size = -1;
-	}
+	private SnapshotObjectType(){ }
 	
 	public int getID(){
 		return this.ordinal()+1;
@@ -94,6 +87,19 @@ public enum SnapshotObjectType {
 			return new SnapshotEventDamageInd();
 		default:
 			return null;
+		}
+	}
+	
+	public static void init(){
+		for(SnapshotObjectType type:values()){
+			final SnapshotObject instance = type.newInstance();
+			
+			if(instance != null)
+				type.size = instance.serializeLength();
+			else
+				type.size = -1;
+			
+			System.out.println(type.size);
 		}
 	}
 }

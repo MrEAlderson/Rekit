@@ -3,6 +3,8 @@ package de.marcely.rekit.network.server;
 import java.awt.Color;
 
 import de.marcely.rekit.Message;
+import de.marcely.rekit.TWWorld;
+import de.marcely.rekit.entity.EntityPlayer;
 import de.marcely.rekit.network.packet.DataPacket;
 import de.marcely.rekit.network.packet.PacketSendFlag;
 import de.marcely.rekit.network.packet.PacketType;
@@ -18,10 +20,13 @@ import de.marcely.rekit.network.packet.game.PacketGameClientStartInfo;
 import de.marcely.rekit.network.packet.game.PacketGameClientVote;
 import de.marcely.rekit.network.packet.game.PacketGameServerReadyToEnter;
 import de.marcely.rekit.network.packet.game.PacketGameServerTuneParams;
+import de.marcely.rekit.plugin.entity.EntityType;
+import de.marcely.rekit.plugin.entity.SpawnCause;
 import de.marcely.rekit.plugin.player.KickCauseType;
 import de.marcely.rekit.util.BufferedReadStream;
 import de.marcely.rekit.util.BufferedWriteStream;
 import de.marcely.rekit.util.TWStream.SanitizeType;
+import de.marcely.rekit.util.Vector2;
 
 public class ClientHandler implements PacketHandler {
 
@@ -83,7 +88,15 @@ public class ClientHandler implements PacketHandler {
 		
 		System.out.println("Player with the ID " + client.getId() + " entered the game");
 		
+		final EntityPlayer player = this.client.getServer().getWorld().spawn(EntityType.PLAYER, new Vector2(0, 0), SpawnCause.WOLRLD);
+		
+		player.client = this.client;
+		player.reset();
+		player.respawn();
+		
+		this.client.player = player;
 		this.client.serverState = ServerClientState.IN_GAME;
+		((TWWorld) this.client.getServer().getWorld()).players.add(player);
 	}
 
 	@Override
